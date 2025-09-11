@@ -6,6 +6,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
+from cv_writer_mcp.logger import LogLevel
+
 
 class ConversionStatus(str, Enum):
     """Conversion status enumeration."""
@@ -18,8 +20,7 @@ class LaTeXEngine(str, Enum):
     """LaTeX engine enumeration."""
 
     PDFLATEX = "pdflatex"
-    XELATEX = "xelatex"
-    LUALATEX = "lualatex"
+    # TODO Add other engines here if necessary
 
 
 class MarkdownToLaTeXRequest(BaseModel):
@@ -64,6 +65,9 @@ class CompileLaTeXRequest(BaseModel):
     latex_engine: LaTeXEngine = Field(
         LaTeXEngine.PDFLATEX, description="LaTeX engine to use"
     )
+    use_agent: bool = Field(
+        True, description="Whether to use AI agents for compilation"
+    )
 
     @field_validator("tex_filename")
     @classmethod
@@ -81,6 +85,7 @@ class CompileLaTeXResponse(BaseModel):
     """Response model for LaTeX to PDF compilation."""
 
     status: ConversionStatus
+
     pdf_url: str | None = Field(
         None, description="Resource URI to access the generated PDF"
     )
@@ -543,7 +548,7 @@ class ServerConfig(BaseModel):
     port: int = 8000
     base_url: str = "http://localhost:8000"
     debug: bool = False
-    log_level: str = "INFO"
+    log_level: LogLevel = LogLevel.INFO
     output_dir: Path = Path("./output")
     temp_dir: Path = Path("./temp")
     max_file_size: int = 10 * 1024 * 1024  # 10MB

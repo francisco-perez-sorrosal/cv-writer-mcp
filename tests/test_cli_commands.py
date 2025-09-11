@@ -36,7 +36,7 @@ class TestCLICommands:
         )
 
         # Mock the LaTeX compiler to return success
-        with patch("cv_writer_mcp.main.LaTeXCompiler") as mock_compiler_class:
+        with patch("cv_writer_mcp.main.LaTeXExpert") as mock_compiler_class:
             mock_compiler = MagicMock()
             mock_compiler_class.return_value = mock_compiler
             mock_compiler.check_latex_installation.return_value = True
@@ -48,21 +48,20 @@ class TestCLICommands:
                 metadata={"output_filename": "test.pdf", "engine": "pdflatex"},
             )
 
-            with patch(
-                "cv_writer_mcp.main._compile_latex_file", return_value=mock_response
-            ):
-                result = self.runner.invoke(app, ["compile-latex", str(tex_file)])
+            mock_compiler.compile_latex_file.return_value = mock_response
 
-                assert result.exit_code == 0
-                assert "Successfully compiled LaTeX to PDF" in result.stdout
-                assert "cv-writer://pdf/test.pdf" in result.stdout
+            result = self.runner.invoke(app, ["compile-latex", str(tex_file)])
+
+            assert result.exit_code == 0
+            assert "Successfully compiled LaTeX to PDF" in result.stdout
+            assert "cv-writer://pdf/test.pdf" in result.stdout
 
     def test_compile_latex_file_not_found(self):
         """Test CLI compilation with non-existent file."""
         result = self.runner.invoke(app, ["compile-latex", "nonexistent.tex"])
 
         assert result.exit_code == 1
-        assert "not found" in result.stdout
+        assert "No .tex file found" in result.stdout
 
     def test_compile_latex_invalid_extension(self):
         """Test CLI compilation with invalid file extension."""
@@ -73,10 +72,7 @@ class TestCLICommands:
         result = self.runner.invoke(app, ["compile-latex", str(txt_file)])
 
         assert result.exit_code == 1
-        assert (
-            "is not a LaTeX file" in result.stdout
-            or "is not a\nLaTeX file" in result.stdout
-        )
+        assert "No .tex file found" in result.stdout
 
     def test_compile_latex_latex_not_installed(self):
         """Test CLI compilation when LaTeX is not installed."""
@@ -87,7 +83,7 @@ class TestCLICommands:
         )
 
         # Mock the LaTeX compiler to return False for installation check
-        with patch("cv_writer_mcp.main.LaTeXCompiler") as mock_compiler_class:
+        with patch("cv_writer_mcp.main.LaTeXExpert") as mock_compiler_class:
             mock_compiler = MagicMock()
             mock_compiler_class.return_value = mock_compiler
             mock_compiler.check_latex_installation.return_value = False
@@ -106,7 +102,7 @@ class TestCLICommands:
         )
 
         # Mock the LaTeX compiler to return success for installation check
-        with patch("cv_writer_mcp.main.LaTeXCompiler") as mock_compiler_class:
+        with patch("cv_writer_mcp.main.LaTeXExpert") as mock_compiler_class:
             mock_compiler = MagicMock()
             mock_compiler_class.return_value = mock_compiler
             mock_compiler.check_latex_installation.return_value = True
@@ -118,14 +114,13 @@ class TestCLICommands:
                 error_message="Compilation failed: Missing package",
             )
 
-            with patch(
-                "cv_writer_mcp.main._compile_latex_file", return_value=mock_response
-            ):
-                result = self.runner.invoke(app, ["compile-latex", str(tex_file)])
+            mock_compiler.compile_latex_file.return_value = mock_response
 
-                assert result.exit_code == 1
-                assert "Compilation failed" in result.stdout
-                assert "Missing package" in result.stdout
+            result = self.runner.invoke(app, ["compile-latex", str(tex_file)])
+
+            assert result.exit_code == 1
+            assert "Compilation failed" in result.stdout
+            assert "Missing package" in result.stdout
 
     def test_compile_latex_with_custom_output(self):
         """Test CLI compilation with custom output filename."""
@@ -136,7 +131,7 @@ class TestCLICommands:
         )
 
         # Mock the LaTeX compiler
-        with patch("cv_writer_mcp.main.LaTeXCompiler") as mock_compiler_class:
+        with patch("cv_writer_mcp.main.LaTeXExpert") as mock_compiler_class:
             mock_compiler = MagicMock()
             mock_compiler_class.return_value = mock_compiler
             mock_compiler.check_latex_installation.return_value = True
@@ -148,16 +143,15 @@ class TestCLICommands:
                 metadata={"output_filename": "custom.pdf", "engine": "pdflatex"},
             )
 
-            with patch(
-                "cv_writer_mcp.main._compile_latex_file", return_value=mock_response
-            ):
-                result = self.runner.invoke(
-                    app, ["compile-latex", str(tex_file), "--output", "custom.pdf"]
-                )
+            mock_compiler.compile_latex_file.return_value = mock_response
 
-                assert result.exit_code == 0
-                assert "Successfully compiled LaTeX to PDF" in result.stdout
-                assert "cv-writer://pdf/custom.pdf" in result.stdout
+            result = self.runner.invoke(
+                app, ["compile-latex", str(tex_file), "--output", "custom.pdf"]
+            )
+
+            assert result.exit_code == 0
+            assert "Successfully compiled LaTeX to PDF" in result.stdout
+            assert "cv-writer://pdf/custom.pdf" in result.stdout
 
     def test_compile_latex_with_debug_mode(self):
         """Test CLI compilation with debug mode enabled."""
@@ -168,7 +162,7 @@ class TestCLICommands:
         )
 
         # Mock the LaTeX compiler
-        with patch("cv_writer_mcp.main.LaTeXCompiler") as mock_compiler_class:
+        with patch("cv_writer_mcp.main.LaTeXExpert") as mock_compiler_class:
             mock_compiler = MagicMock()
             mock_compiler_class.return_value = mock_compiler
             mock_compiler.check_latex_installation.return_value = True
@@ -180,15 +174,14 @@ class TestCLICommands:
                 metadata={"output_filename": "test.pdf", "engine": "pdflatex"},
             )
 
-            with patch(
-                "cv_writer_mcp.main._compile_latex_file", return_value=mock_response
-            ):
-                result = self.runner.invoke(
-                    app, ["compile-latex", str(tex_file), "--debug"]
-                )
+            mock_compiler.compile_latex_file.return_value = mock_response
 
-                assert result.exit_code == 0
-                assert "Successfully compiled LaTeX to PDF" in result.stdout
+            result = self.runner.invoke(
+                app, ["compile-latex", str(tex_file), "--debug"]
+            )
+
+            assert result.exit_code == 0
+            assert "Successfully compiled LaTeX to PDF" in result.stdout
 
     def test_compile_latex_with_custom_engine(self):
         """Test CLI compilation with custom LaTeX engine."""
@@ -199,7 +192,7 @@ class TestCLICommands:
         )
 
         # Mock the LaTeX compiler
-        with patch("cv_writer_mcp.main.LaTeXCompiler") as mock_compiler_class:
+        with patch("cv_writer_mcp.main.LaTeXExpert") as mock_compiler_class:
             mock_compiler = MagicMock()
             mock_compiler_class.return_value = mock_compiler
             mock_compiler.check_latex_installation.return_value = True
@@ -211,15 +204,14 @@ class TestCLICommands:
                 metadata={"output_filename": "test.pdf", "engine": "pdflatex"},
             )
 
-            with patch(
-                "cv_writer_mcp.main._compile_latex_file", return_value=mock_response
-            ):
-                result = self.runner.invoke(
-                    app, ["compile-latex", str(tex_file), "--engine", "pdflatex"]
-                )
+            mock_compiler.compile_latex_file.return_value = mock_response
 
-                assert result.exit_code == 0
-                assert "Successfully compiled LaTeX to PDF" in result.stdout
+            result = self.runner.invoke(
+                app, ["compile-latex", str(tex_file), "--engine", "pdflatex"]
+            )
+
+            assert result.exit_code == 0
+            assert "Successfully compiled LaTeX to PDF" in result.stdout
 
     def test_compile_latex_help(self):
         """Test CLI compile-latex help."""
@@ -233,7 +225,7 @@ class TestCLICommands:
 
     def test_check_latex_command(self):
         """Test the check-latex CLI command."""
-        with patch("cv_writer_mcp.main.LaTeXCompiler") as mock_compiler_class:
+        with patch("cv_writer_mcp.main.LaTeXExpert") as mock_compiler_class:
             mock_compiler = MagicMock()
             mock_compiler_class.return_value = mock_compiler
             mock_compiler.check_latex_installation.return_value = True

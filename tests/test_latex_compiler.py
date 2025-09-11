@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cv_writer_mcp.latex_compiler import LaTeXCompiler
+from cv_writer_mcp.latex_compiler import LaTeXExpert
 from cv_writer_mcp.models import (
     CompileLaTeXRequest,
     CompileLaTeXResponse,
@@ -30,15 +30,15 @@ class TestLaTeXCompiler:
 
     def test_initialization(self):
         """Test compiler initialization."""
-        compiler = LaTeXCompiler(timeout=30, config=self.config)
+        compiler = LaTeXExpert(config=self.config)
         assert compiler.timeout == 30
         assert compiler.config == self.config
 
     def test_initialization_no_config(self):
         """Test compiler initialization without config."""
-        compiler = LaTeXCompiler(timeout=30)
+        compiler = LaTeXExpert(config=ServerConfig())
         assert compiler.timeout == 30
-        assert compiler.config is None
+        assert compiler.config is not None
 
     @pytest.mark.asyncio
     async def test_compile_from_request_success(self):
@@ -50,7 +50,7 @@ class TestLaTeXCompiler:
             "\\documentclass{article}\\begin{document}Test\\end{document}"
         )
 
-        with patch.object(LaTeXCompiler, "compile_with_agent") as mock_agent:
+        with patch.object(LaTeXExpert, "compile_with_agent") as mock_agent:
             from cv_writer_mcp.models import LaTeXCompilationResult
 
             mock_agent.return_value = LaTeXCompilationResult(
@@ -60,7 +60,7 @@ class TestLaTeXCompiler:
                 output_path=self.config.output_dir / "test.pdf",
             )
 
-            compiler = LaTeXCompiler(timeout=30, config=self.config)
+            compiler = LaTeXExpert(config=self.config)
             request = CompileLaTeXRequest(
                 tex_filename="test.tex",
                 output_filename="test.pdf",
@@ -79,7 +79,7 @@ class TestLaTeXCompiler:
     @pytest.mark.asyncio
     async def test_compile_from_request_no_config(self):
         """Test compilation from request without config."""
-        compiler = LaTeXCompiler(timeout=30)  # No config
+        compiler = LaTeXExpert(config=ServerConfig())  # No config
         request = CompileLaTeXRequest(
             tex_filename="test.tex",
             latex_engine=LaTeXEngine.PDFLATEX,
@@ -88,12 +88,12 @@ class TestLaTeXCompiler:
         response = await compiler.compile_from_request(request)
 
         assert response.status == ConversionStatus.FAILED
-        assert "Server configuration not provided" in response.error_message
+        assert "LaTeX file not found" in response.error_message
 
     @pytest.mark.asyncio
     async def test_compile_from_request_file_not_found(self):
         """Test compilation from request with missing file."""
-        compiler = LaTeXCompiler(timeout=30, config=self.config)
+        compiler = LaTeXExpert(config=self.config)
         request = CompileLaTeXRequest(
             tex_filename="nonexistent.tex",
             latex_engine=LaTeXEngine.PDFLATEX,
@@ -114,14 +114,14 @@ class TestLaTeXCompiler:
             "\\documentclass{article}\\begin{document}Test\\end{document}"
         )
 
-        with patch.object(LaTeXCompiler, "compile_from_request") as mock_compile:
+        with patch.object(LaTeXExpert, "compile_from_request") as mock_compile:
             mock_compile.return_value = CompileLaTeXResponse(
                 status=ConversionStatus.FAILED,
                 pdf_url=None,
                 error_message="LaTeX compilation failed",
             )
 
-            compiler = LaTeXCompiler(timeout=30, config=self.config)
+            compiler = LaTeXExpert(config=self.config)
             request = CompileLaTeXRequest(
                 tex_filename="test.tex",
                 latex_engine=LaTeXEngine.PDFLATEX,
@@ -142,10 +142,10 @@ class TestLaTeXCompiler:
             "\\documentclass{article}\\begin{document}Test\\end{document}"
         )
 
-        with patch.object(LaTeXCompiler, "compile_with_agent") as mock_agent:
+        with patch.object(LaTeXExpert, "compile_with_agent") as mock_agent:
             mock_agent.side_effect = Exception("Compilation error")
 
-            compiler = LaTeXCompiler(timeout=30, config=self.config)
+            compiler = LaTeXExpert(config=self.config)
             request = CompileLaTeXRequest(
                 tex_filename="test.tex",
                 latex_engine=LaTeXEngine.PDFLATEX,
@@ -161,7 +161,7 @@ class TestLaTeXCompiler:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
 
-            compiler = LaTeXCompiler(timeout=30)
+            compiler = LaTeXExpert(config=ServerConfig())
             result = compiler.check_latex_installation(LaTeXEngine.PDFLATEX)
 
             assert result is True
@@ -174,7 +174,7 @@ class TestLaTeXCompiler:
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError()
 
-            compiler = LaTeXCompiler(timeout=30)
+            compiler = LaTeXExpert(config=ServerConfig())
             result = compiler.check_latex_installation(LaTeXEngine.PDFLATEX)
 
             assert result is False
@@ -186,7 +186,7 @@ class TestLaTeXCompiler:
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired("pdflatex", 10)
 
-            compiler = LaTeXCompiler(timeout=30)
+            compiler = LaTeXExpert(config=ServerConfig())
             result = compiler.check_latex_installation(LaTeXEngine.PDFLATEX)
 
             assert result is False
@@ -196,7 +196,7 @@ class TestLaTeXCompiler:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
 
-            compiler = LaTeXCompiler(timeout=30)
+            compiler = LaTeXExpert(config=ServerConfig())
             result = compiler.check_latex_installation()
 
             assert result is True
@@ -218,7 +218,7 @@ class TestLaTeXCompiler:
 
             # Create config
             config = ServerConfig(output_dir=temp_path)
-            compiler = LaTeXCompiler(config=config)
+            compiler = LaTeXExpert(config=config)
 
             # Create request (should use agent by default)
             request = CompileLaTeXRequest(tex_filename="test.tex")
@@ -258,7 +258,7 @@ class TestLaTeXCompiler:
 
             # Create config
             config = ServerConfig(output_dir=temp_path)
-            compiler = LaTeXCompiler(config=config)
+            compiler = LaTeXExpert(config=config)
 
             # Create request with use_agent=False
             request = CompileLaTeXRequest(tex_filename="test.tex", use_agent=False)
@@ -282,5 +282,5 @@ class TestLaTeXCompiler:
                 # Verify response
                 assert response.status == ConversionStatus.SUCCESS
                 assert response.pdf_url == "cv-writer://pdf/test.pdf"
-                assert response.metadata["compilation_method"] == "agent"
+                assert response.metadata["compilation_method"] == "direct"
                 assert "agent_response" not in response.metadata

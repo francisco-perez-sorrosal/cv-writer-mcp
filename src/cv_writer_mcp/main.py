@@ -1,23 +1,27 @@
-"""Simplified main entry point for CV Writer MCP Server."""
+"""Main entry point for CV Writer MCP Server."""
 
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 import typer
 from dotenv import load_dotenv
 from loguru import logger
 from mcp.server.fastmcp import FastMCP
+from pydantic import Field
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
 from .cv_converter import CVConverter
-from .latex_compiler import LaTeXCompiler
+from .latex_compiler import LaTeXExpert
 from .logger import LogConfig, LogLevel, configure_logger
 from .models import (
-    CompileLaTeXRequest,
     CompileLaTeXResponse,
+    ConversionStatus,
+    HealthStatusResponse,
     LaTeXEngine,
     MarkdownToLaTeXRequest,
     MarkdownToLaTeXResponse,
@@ -30,7 +34,7 @@ load_dotenv()
 # Global variables for MCP server
 mcp: FastMCP | None = None
 cv_converter: CVConverter | None = None
-latex_compiler: LaTeXCompiler | None = None
+latex_expert: LaTeXExpert | None = None
 config: ServerConfig | None = None
 
 app = typer.Typer(
@@ -41,7 +45,7 @@ app = typer.Typer(
 console = Console()
 
 # Configure transport and statelessness
-trspt = "stdio"
+trspt: Literal["stdio", "streamable-http"] = "stdio"
 stateless_http = False
 match os.environ.get("TRANSPORT", trspt):
     case "streamable-http":
@@ -52,8 +56,15 @@ match os.environ.get("TRANSPORT", trspt):
         stateless_http = False
 
 
-def create_config() -> ServerConfig:
-    """Create server configuration from environment variables."""
+def create_config(debug: bool = False) -> ServerConfig:
+    """Create server configuration from environment variables with optional debug mode.
+
+    Args:
+        debug: Whether to enable debug mode
+
+    Returns:
+        Configured ServerConfig instance
+    """
     host = os.getenv("HOST", "localhost")
     port = int(os.getenv("PORT", "8000"))
 
@@ -62,12 +73,18 @@ def create_config() -> ServerConfig:
     if not base_url:
         base_url = f"http://{host}:{port}"
 
+    # Determine debug and log level settings
+    debug_mode = debug or os.getenv("DEBUG", "false").lower() == "true"
+    log_level = (
+        LogLevel.DEBUG if debug_mode else LogLevel[os.getenv("LOG_LEVEL", "INFO")]
+    )
+
     return ServerConfig(
         host=host,
         port=port,
         base_url=base_url,
-        debug=os.getenv("DEBUG", "false").lower() == "true",
-        log_level=os.getenv("LOG_LEVEL", "INFO"),
+        debug=debug_mode,
+        log_level=log_level,
         output_dir=Path(os.getenv("OUTPUT_DIR", "./output")),
         temp_dir=Path(os.getenv("TEMP_DIR", "./temp")),
         max_file_size=int(os.getenv("MAX_FILE_SIZE", "10485760")),
@@ -77,115 +94,29 @@ def create_config() -> ServerConfig:
     )
 
 
-def setup_config_with_debug(debug: bool = False) -> ServerConfig:
-    """Create and configure server configuration with optional debug mode.
-
-    Args:
-        debug: Whether to enable debug mode
-
-    Returns:
-        Configured ServerConfig instance
-    """
-    config = create_config()
-    if debug:
-        config.debug = True
-        config.log_level = "DEBUG"
-    return config
-
-
-def setup_logging(config: ServerConfig, debug: bool = False) -> None:
+def setup_logging(log_level: LogLevel) -> None:
     """Configure logging for the application.
 
     Args:
-        config: Server configuration
-        debug: Whether to run in debug mode
+        log_level: Log level to use
     """
     log_config = LogConfig(
-        level=LogLevel(config.log_level),
-        log_file=Path("server.log") if not debug else None,
+        level=log_level,
+        log_file=Path("server.log") if log_level != LogLevel.DEBUG else None,
         console_output=True,
     )
     configure_logger(log_config)
-
-
-def _compile_latex_file(
-    tex_filename: str,
-    output_filename: str | None = None,
-    latex_engine: str = "pdflatex",
-    compiler: LaTeXCompiler | None = None,
-) -> CompileLaTeXResponse:
-    """Common LaTeX compilation logic using intelligent agents.
-
-    Args:
-        tex_filename: Name of the .tex file to compile
-        output_filename: Custom output filename for PDF (optional)
-        latex_engine: LaTeX engine to use (currently only pdflatex supported)
-        compiler: LaTeX compiler instance (optional, will use global if not provided)
-
-    Returns:
-        Compilation response with PDF URL or error message
-    """
-    if not compiler:
-        from .models import ConversionStatus
-
-        return CompileLaTeXResponse(
-            status=ConversionStatus.FAILED,
-            pdf_url=None,
-            error_message="LaTeX compiler not available",
-        )
-
-    try:
-        # For now, only support PDFLATEX (keeping scaffolding for future engines)
-        if latex_engine != "pdflatex":
-            from .models import ConversionStatus
-
-            return CompileLaTeXResponse(
-                status=ConversionStatus.FAILED,
-                pdf_url=None,
-                error_message=f"Currently only 'pdflatex' engine is supported. Requested: '{latex_engine}'",
-            )
-
-        engine = LaTeXEngine.PDFLATEX
-
-        # Create request
-        request = CompileLaTeXRequest(
-            tex_filename=tex_filename,
-            output_filename=output_filename,
-            latex_engine=engine,
-        )
-
-        # Compile LaTeX to PDF using intelligent agents
-        # Note: This is a sync function, so we need to handle the async call
-        import asyncio
-
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return loop.run_until_complete(compiler.compile_from_request(request))
-
-    except Exception as e:
-        logger.error(f"Error in LaTeX compilation: {e}")
-        from .models import ConversionStatus
-
-        return CompileLaTeXResponse(
-            status=ConversionStatus.FAILED,
-            pdf_url=None,
-            error_message=f"Error processing LaTeX to PDF compilation request: {str(e)}",
-        )
 
 
 def setup_mcp_server(
     server_config: ServerConfig, host: str = "localhost", port: int = 8000
 ) -> None:
     """Set up the FastMCP server with tools and HTTP endpoints."""
-    global mcp, cv_converter, latex_compiler, config
+    global mcp, cv_converter, latex_expert, config
 
     config = server_config
     cv_converter = CVConverter(config)
-    latex_compiler = LaTeXCompiler(timeout=config.latex_timeout, config=config)
+    latex_expert = LaTeXExpert(config)
     mcp = FastMCP("cv-writer-mcp", host=host, port=port)
 
     # MCP Tools
@@ -203,8 +134,6 @@ def setup_mcp_server(
             Structured response with conversion status, LaTeX file URL, and metadata
         """
         if not cv_converter:
-            from .models import ConversionStatus
-
             return MarkdownToLaTeXResponse(
                 status=ConversionStatus.FAILED,
                 tex_url=None,
@@ -223,7 +152,6 @@ def setup_mcp_server(
 
         except Exception as e:
             logger.error(f"Error in markdown_to_latex: {e}")
-            from .models import ConversionStatus
 
             return MarkdownToLaTeXResponse(
                 status=ConversionStatus.FAILED,
@@ -233,9 +161,13 @@ def setup_mcp_server(
 
     @mcp.tool(structured_output=True)
     async def compile_latex_to_pdf(
-        tex_filename: str,
-        output_filename: str | None = None,
-        latex_engine: str = "pdflatex",
+        tex_filename: str = Field(..., description="Name of the .tex file to compile"),
+        output_filename: str | None = Field(
+            None, description="Custom output filename for PDF (optional)"
+        ),
+        latex_engine: LaTeXEngine = Field(
+            LaTeXEngine.PDFLATEX, description="LaTeX engine to use"
+        ),
     ) -> CompileLaTeXResponse:
         """Compile LaTeX file to PDF using intelligent agents.
 
@@ -247,25 +179,26 @@ def setup_mcp_server(
         Returns:
             Structured response with compilation status, PDF URL, and metadata
         """
-        if not latex_compiler:
-            from .models import ConversionStatus
-
+        if not latex_expert:
             return CompileLaTeXResponse(
                 status=ConversionStatus.FAILED,
                 pdf_url=None,
                 error_message="Server not initialized",
             )
 
-        # Use the common compilation logic
-        return _compile_latex_file(
+        # Use the LaTeXExpert's synchronous compilation method
+        return latex_expert.compile_latex_file(
             tex_filename=tex_filename,
             output_filename=output_filename,
             latex_engine=latex_engine,
-            compiler=latex_compiler,
         )
 
     @mcp.tool()
-    async def check_latex_installation(engine: str = "pdflatex") -> str:
+    async def check_latex_installation(
+        engine: str = Field(
+            LaTeXEngine.PDFLATEX.value, description="LaTeX engine to check"
+        )
+    ) -> str:
         """Check if LaTeX is installed and accessible.
 
         Args:
@@ -274,21 +207,20 @@ def setup_mcp_server(
         Returns:
             Installation status
         """
-        if not latex_compiler:
+        if not latex_expert:
             return "Error: Server not initialized"
 
         try:
-            # For now, only support PDFLATEX (keeping scaffolding for future engines)
-            if engine != "pdflatex":
-                return f"Error: Currently only 'pdflatex' engine is supported. Requested: '{engine}'"
+            if engine != LaTeXEngine.PDFLATEX.value:
+                return f"Error: Currently only '{LaTeXEngine.PDFLATEX.value}' engine is supported. Requested: '{engine}'"
 
             latex_engine = LaTeXEngine.PDFLATEX
-            is_installed = latex_compiler.check_latex_installation(latex_engine)
+            is_installed = latex_expert.check_latex_installation(latex_engine)
 
             if is_installed:
                 return f"✅ LaTeX engine '{engine}' is installed and accessible"
             else:
-                return f"❌ LaTeX engine '{engine}' is not installed or not accessible. Please install LaTeX to use this service."
+                return f"❌ LaTeX engine '{engine}' is not installed/accessible."
 
         except Exception as e:
             logger.error(f"Error in check_latex_installation: {e}")
@@ -297,13 +229,9 @@ def setup_mcp_server(
     @mcp.tool()
     async def health_check() -> str:
         """Check the health status of the CV Writer MCP server."""
-        from datetime import datetime
-
-        from .models import HealthStatusResponse
-
         health_response = HealthStatusResponse(
             status="healthy",
-            service="cv-writer-mcp-simplified",
+            service="cv-writer-mcp",
             timestamp=datetime.now().isoformat(),
             version="0.1.0",
         )
@@ -318,11 +246,8 @@ def setup_mcp_server(
 
         pdf_path = config.output_dir / filename
 
-        if not pdf_path.exists():
+        if not pdf_path.exists() or pdf_path.suffix.lower() != ".pdf":
             raise FileNotFoundError(f"PDF {filename} not found")
-
-        if not pdf_path.suffix.lower() == ".pdf":
-            raise ValueError("File is not a PDF")
 
         return pdf_path.read_bytes()
 
@@ -334,13 +259,13 @@ def setup_mcp_server(
 
         tex_path = config.output_dir / filename
 
-        if not tex_path.exists():
+        if not tex_path.exists() or tex_path.suffix.lower() != ".tex":
             raise FileNotFoundError(f"LaTeX file {filename} not found")
 
-        if not tex_path.suffix.lower() == ".tex":
-            raise ValueError("File is not a LaTeX file")
-
         return tex_path.read_text(encoding="utf-8")
+
+
+### CLI Commands to test the MCP Server functionality ###
 
 
 @app.command()
@@ -354,10 +279,10 @@ def start(
     """Start the simplified CV Writer MCP Server."""
 
     # Create and configure server configuration
-    server_config = setup_config_with_debug(debug)
+    config = create_config(debug)
 
     # Configure logging
-    setup_logging(server_config, debug)
+    setup_logging(config.log_level)
 
     # Log environment information for debugging
     logger.info(f"Python version: {sys.version}")
@@ -365,97 +290,67 @@ def start(
     logger.info(
         f"Environment variables: TRANSPORT={os.environ.get('TRANSPORT')}, HOST={os.environ.get('HOST')}, PORT={os.environ.get('PORT')}"
     )
-
     logger.info("🚀 Starting Simplified CV Writer MCP Server")
-    logger.info(f"📁 Output directory: {server_config.output_dir}")
-    logger.info(f"🌐 Base URL: {server_config.base_url}")
+    logger.info(f"📁 Output directory: {config.output_dir}")
+    logger.info(f"🌐 Base URL: {config.base_url}")
 
-    # Log transport configuration
-    logger.info(
-        f"Starting CV Writer MCP server with {trspt} transport ({host}:{port}) and stateless_http={stateless_http}..."
-    )
-
-    # Additional pre-flight checks
     if trspt == "stdio":
-        logger.info(
-            "Using stdio transport - suitable for local Claude Desktop integration"
-        )
+        logger.info("Using stdio transport")
     elif trspt == "streamable-http":
-        logger.info(
-            f"Using HTTP transport - server will be accessible at http://{host}:{port}/mcp"
-        )
+        logger.info(f"Using HTTP transport - server: http://{host}:{port}/mcp")
 
-    # Display startup banner only for HTTP transport
-    # For stdio transport, we must not output anything to stdout except JSON-RPC
-    if trspt == "streamable-http":
-        banner_text = Text()
-        banner_text.append("CV Writer MCP Server", style="bold blue")
-        banner_text.append("\n\n", style="default")
-        banner_text.append(
-            "✨ Convert markdown CV content to LaTeX using OpenAI\n", style="green"
-        )
-        banner_text.append(
-            "🔧 MCP Tools: markdown_to_latex, compile_latex_to_pdf, check_latex_installation, health_check\n",
-            style="yellow",
-        )
-        banner_text.append(
-            "🌐 MCP Resources: cv-writer://pdf/{filename}, cv-writer://tex/{filename}\n",
-            style="cyan",
-        )
-        console.print(Panel(banner_text, title="Welcome", border_style="blue"))
+    # Display startup banner
+    banner_text = Text()
+    banner_text.append("CV Writer MCP Server", style="bold blue")
+    banner_text.append("\n\n", style="default")
+    banner_text.append("✨ Convert markdown CV to LaTeX\n", style="green")
+    banner_text.append(
+        "🔧 MCP Tools: markdown_to_latex, compile_latex_to_pdf, check_latex_installation, health_check\n",
+        style="yellow",
+    )
+    banner_text.append(
+        "🌐 MCP Resources: cv-writer://pdf/{filename}, cv-writer://tex/{filename}\n",
+        style="cyan",
+    )
+    console.print(Panel(banner_text, title="Welcome", border_style="blue"))
 
     # Set up the FastMCP server
-    setup_mcp_server(server_config, host=host, port=port)
+    setup_mcp_server(config, host=host, port=port)
 
     # Check LaTeX installation
-    if not latex_compiler or not latex_compiler.check_latex_installation():
-        logger.warning("⚠️  LaTeX is not installed. PDF compilation will fail.")
-        if trspt == "streamable-http":
-            console.print(
-                "[yellow]⚠️  Warning: LaTeX is not installed. Please install LaTeX to use this service.[/yellow]"
-            )
+    if not latex_expert or not latex_expert.check_latex_installation():
+        console.print(
+            "[yellow]⚠️  Warning: LaTeX is not installed. Install LaTeX to use this service.[/yellow]"
+        )
     else:
-        logger.info("✅ LaTeX installation verified")
-        if trspt == "streamable-http":
-            console.print("[green]✅ LaTeX installation verified[/green]")
+        console.print(
+            "[green]✅ LaTeX installation verified[/green]",
+        )
 
     # Check OpenAI API key
-    if not server_config.openai_api_key:
-        logger.warning(
-            "⚠️  OpenAI API key not found. Markdown to LaTeX conversion will fail."
+    if not config.openai_api_key:
+        console.print(
+            "[yellow]⚠️  Warning: OPENAI_API_KEY not set. Please set your OpenAI API key.[/yellow]"
         )
-        if trspt == "streamable-http":
-            console.print(
-                "[yellow]⚠️  Warning: OPENAI_API_KEY not set. Please set your OpenAI API key.[/yellow]"
-            )
     else:
-        logger.info("✅ OpenAI API key found")
-        if trspt == "streamable-http":
-            console.print("[green]✅ OpenAI API key found[/green]")
+        console.print("[green]✅ OpenAI API key found[/green]")
 
     # Start the server
     try:
         if not mcp:
-            logger.error("Failed to initialize MCP server")
+            console.print("[red]❌ Failed to initialize MCP server[/red]")
             return
 
-        if trspt == "streamable-http":
-            mcp.run(transport="streamable-http")
-        else:
-            mcp.run(transport="stdio")
+        mcp.run(transport=trspt)
     except KeyboardInterrupt:
-        logger.info("👋 Shutting down CV Writer FastMCP Server")
-        if trspt == "streamable-http":
-            console.print(
-                "\n[yellow]👋 Shutting down CV Writer FastMCP Server[/yellow]"
-            )
+        console.print("\n[yellow]👋 Shutting down CV Writer MCP Server[/yellow]")
 
 
 @app.command()
 def check_latex() -> None:
     """Check LaTeX installation (PDFLATEX engine)."""
-    config = setup_config_with_debug()
-    latex_compiler = LaTeXCompiler(timeout=config.latex_timeout, config=config)
+    config = create_config()
+    latex_compiler = LaTeXExpert(config=config)
 
     console.print("[blue]Checking LaTeX installation...[/blue]")
 
@@ -480,30 +375,24 @@ def compile_latex(
     """Compile a LaTeX file to PDF from the command line."""
 
     # Create and configure server configuration
-    config = setup_config_with_debug(debug)
+    config = create_config(debug)
 
     # Configure logging
-    setup_logging(config, debug)
+    setup_logging(config.log_level)
 
     console.print(f"[blue]Compiling LaTeX file: {tex_file}[/blue]")
 
-    # Check if the input file exists
+    # Check if the input file exists and is a .tex file
     tex_path = Path(tex_file)
-    if not tex_path.exists():
-        console.print(f"[red]❌ Error: LaTeX file '{tex_file}' not found[/red]")
-        raise typer.Exit(1)
-
-    if not tex_path.suffix.lower() == ".tex":
-        console.print(
-            f"[red]❌ Error: File '{tex_file}' is not a LaTeX file (.tex)[/red]"
-        )
+    if not tex_path.exists() or tex_path.suffix.lower() != ".tex":
+        console.print(f"[red]❌ Error: No .tex file found at '{tex_file}'[/red]")
         raise typer.Exit(1)
 
     # Create LaTeX compiler
-    latex_compiler = LaTeXCompiler(timeout=config.latex_timeout, config=config)
+    latex_compiler = LaTeXExpert(config=config)
 
     # Check LaTeX installation first
-    if not latex_compiler.check_latex_installation():
+    if not latex_compiler.check_latex_installation(LaTeXEngine(latex_engine)):
         console.print("[red]❌ Error: LaTeX is not installed or not accessible[/red]")
         console.print("[yellow]Please install LaTeX to use this service.[/yellow]")
         raise typer.Exit(1)
@@ -515,11 +404,10 @@ def compile_latex(
 
     # Compile the LaTeX file
     try:
-        response = _compile_latex_file(
+        response = latex_compiler.compile_latex_file(
             tex_filename=tex_path.name,  # Use just the filename, not the full path
             output_filename=output_file,
             latex_engine=latex_engine,
-            compiler=latex_compiler,
         )
 
         if response.status.value == "success":

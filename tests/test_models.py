@@ -178,10 +178,6 @@ class TestLaTeXEngine:
         # Primary engine (currently supported)
         assert LaTeXEngine.PDFLATEX == "pdflatex"
 
-        # Future engines (scaffolding for extensibility)
-        assert LaTeXEngine.XELATEX == "xelatex"
-        assert LaTeXEngine.LUALATEX == "lualatex"
-
     def test_default_engine(self):
         """Test that PDFLATEX is the default engine."""
         # Test that CompileLaTeXRequest defaults to PDFLATEX
@@ -200,7 +196,7 @@ class TestServerConfig:
         assert config.port == 8000
         assert config.base_url == "http://localhost:8000"
         assert config.debug is False
-        assert config.log_level == "INFO"
+        assert config.log_level.value == "INFO"
         assert config.max_file_size == 10 * 1024 * 1024
         assert config.latex_timeout == 30
         assert config.openai_api_key is None
@@ -223,7 +219,7 @@ class TestServerConfig:
         assert config.port == 9000
         assert config.base_url == "https://example.com"
         assert config.debug is True
-        assert config.log_level == "DEBUG"
+        assert config.log_level.value == "DEBUG"
         assert config.max_file_size == 20 * 1024 * 1024
         assert config.latex_timeout == 60
         assert config.openai_api_key == "sk-test-key"

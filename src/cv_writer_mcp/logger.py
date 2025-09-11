@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 from pydantic import BaseModel
 
 
-class LogLevel(str, Enum):
+class LogLevel(Enum):
     """Log level enumeration."""
 
     DEBUG = "DEBUG"
