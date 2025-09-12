@@ -470,37 +470,11 @@ class ErrorFixingAgent:
         moderncv_guide = self._read_moderncv_user_guide()
         moderncv_template = self._read_moderncv_template()
 
-        # Define the error fixing agent instructions
-        error_fixing_instructions = f"""
-You are an expert in fixing LaTeX compilation errors and an expert in using the ModernCV LaTeX package. As a guide, follow the process and rules below adapting them when required to the specific LaTeX file you are fixing:
-
-<MODERNCV_REFERENCE>
-{moderncv_guide}
-</MODERNCV_REFERENCE>
-
-<MODERNCV_TEMPLATE>
-{moderncv_template}
-</MODERNCV_TEMPLATE>
-
-<PROCESS>
-1. Analyze the LaTeX file content provided in the context to understand the current LaTeX document structure
-2. Identify root cause or causes of compilation errors based on the error log provided
-3. Analyze the ModernCV user guide for proper command syntax
-4. Use the ModernCV template as a working reference for correct LaTeX structure and command usage
-5. Apply all the necessary minimal syntax fixes to the LaTeX file content
-6. Return the corrected LaTeX file content with all fixes applied
-</PROCESS>
-
-<RULES>
-- Fix only structural syntax issues
-- Preserve all original content and formatting
-- Use ModernCV guide for proper command syntax when required. Otherwise, use your own LaTeX knowledge.
-- Reference the ModernCV template to see working examples of proper LaTeX structure and command usage
-- Return the corrected LaTeX file content with all fixes applied
-- Focus on specific errors mentioned in the context provided
-- The LaTeX file content will be provided in the context, no need to read files
-</RULES>
-"""
+        # Get the error fixing agent instructions from YAML configuration
+        error_fixing_instructions = self.agent_config["instructions"].format(
+            moderncv_guide=moderncv_guide,
+            moderncv_template=moderncv_template
+        )
 
         return Agent(
             name="LaTeX Error Fixing Agent",

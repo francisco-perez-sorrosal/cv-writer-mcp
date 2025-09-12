@@ -300,7 +300,6 @@ class LaTeXExpert:
 
                 # Success check - rely on agent's determination
                 if compilation_result.success:
-                    self._compilation_diagnostics.increment("successful_compilations")
                     logger.info(f"Compilation successful (Attempt {attempt}")
 
                     # Create final successful result
@@ -312,8 +311,7 @@ class LaTeXExpert:
                     )
                     break
                 else:
-                    # Failed compilation: - Track it and log the result
-                    self._compilation_diagnostics.increment("failed_compilations")
+                    # Failed compilation: - Log the result (counters already incremented by compiler_agent)
                     # Log complete compilation result information using string representation
                     logger.warning(f"--------------------------------")
                     logger.warning(f"Compilation failed (Attempt {attempt})")
