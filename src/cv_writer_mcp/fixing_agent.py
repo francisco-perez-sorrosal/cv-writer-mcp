@@ -579,7 +579,7 @@ You are an expert in fixing LaTeX compilation errors and an expert in using the 
                 explanation=f"Failed to parse error fixing agent output: {str(e)}",
             )
 
-    async def fix_errors_with_agent(
+    async def fix_errors(
         self,
         tex_file_path: Path,
         error_context: dict[str, Any],

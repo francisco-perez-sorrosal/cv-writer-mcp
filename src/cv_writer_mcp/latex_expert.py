@@ -350,7 +350,7 @@ class LaTeXExpert:
                         try:
                             # Use the error fixing agent to fix errors
                             fixing_output, corrected_file_path = (
-                                await self._fixing_agent.fix_errors_with_agent(
+                                await self._fixing_agent.fix_errors(
                                     current_tex_path, error_context, log_content
                                 )
                             )
