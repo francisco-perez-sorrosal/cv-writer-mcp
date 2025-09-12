@@ -16,7 +16,7 @@ from .models import (
     ErrorFixingAgentOutput,
     ServerConfig,
 )
-from .utils import create_timestamped_version
+from .utils import create_timestamped_version, load_agent_config
 
 
 class ErrorFixingAgent:
@@ -25,7 +25,7 @@ class ErrorFixingAgent:
     def __init__(
         self,
         diagnostics: CompilationDiagnostics | None = None,
-        config: ServerConfig | None = None,
+        server_config: ServerConfig | None = None,
     ):
         """Initialize the error fixing agent.
 
@@ -34,7 +34,8 @@ class ErrorFixingAgent:
             config: Server configuration for accessing templates and guides
         """
         self.diagnostics = diagnostics or CompilationDiagnostics()
-        self.config = config
+        self.server_config = server_config
+        self.agent_config = load_agent_config("error_fixing_agent.yaml")
 
     def _log_agent_diagnostics(self, stage: str, data: dict[str, Any]) -> None:
         """Enhanced diagnostic logging for agent communication and parsing."""
@@ -411,8 +412,8 @@ class ErrorFixingAgent:
         try:
             # Try to find the moderncv user guide in the context/latex directory
             latex_dir = Path("context") / "latex"
-            if self.config and self.config.templates_dir:
-                latex_dir = self.config.templates_dir
+            if self.server_config and self.server_config.templates_dir:
+                latex_dir = self.server_config.templates_dir
 
             user_guide_path = latex_dir / "moderncv_userguide.txt"
 
@@ -436,8 +437,8 @@ class ErrorFixingAgent:
         try:
             # Try to find the moderncv template in the context directory
             templates_dir = Path("context/latex")
-            if self.config and self.config.templates_dir:
-                templates_dir = self.config.templates_dir / "latex"
+            if self.server_config and self.server_config.templates_dir:
+                templates_dir = self.server_config.templates_dir / "latex"
 
             template_path = templates_dir / "moderncv_template.tex"
 
@@ -505,7 +506,7 @@ You are an expert in fixing LaTeX compilation errors and an expert in using the 
             name="LaTeX Error Fixing Agent",
             instructions=error_fixing_instructions,
             tools=[],  # No tools needed - content passed in prompt
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             output_type=ErrorFixingAgentOutput,
         )
 
@@ -646,39 +647,18 @@ You are an expert in fixing LaTeX compilation errors and an expert in using the 
                 critical_errors_text += f"- {error}\n"
             critical_errors_text += "</CRITICAL_ERRORS>\n"
 
-        error_fixing_prompt = f"""
-Fix the following LaTeX compilation errors by analyzing the line-numbered content:
-
-{latex_error_guide}
-
-<LATEX_FILE_CONTENT_WITH_LINE_NUMBERS>
-{numbered_latex_content}
-</LATEX_FILE_CONTENT_WITH_LINE_NUMBERS>
-
-<ERROR_ANALYSIS>
-Target File: {tex_file_path}
-Total Errors Found: {error_context['error_count']}
-Warnings: {error_context['warning_count']}
-Log Status: {error_context['validation_status']}
-Line-Specific Errors Found: {len(log_error_analysis['line_specific_errors'])}
-</ERROR_ANALYSIS>
-{focused_errors_text}
-{critical_errors_text}
-<FULL_LOG_EXCERPT>
-{log_content}
-</FULL_LOG_EXCERPT>
-
-CRITICAL INSTRUCTIONS:
-1. The content above shows LINE NUMBERS (e.g., "045: content")
-2. When log shows "l.45 \\end{{itemize}}}}", look at line 045 in the numbered content
-3. Fix the exact issues at those specific lines and surrounding context
-4. IMPORTANT: Return your corrected content WITH the same line number format
-5. Do not remove the line numbers - I will process them after
-6. Focus on brace matching, environment nesting, and command syntax
-7. Pay special attention to the problematic lines identified in the error guide
-
-Return the corrected content maintaining the "XXX: content" line number format.
-"""
+        error_fixing_prompt = self.agent_config["prompt_template"].format(
+            latex_error_guide=latex_error_guide,
+            numbered_latex_content=numbered_latex_content,
+            tex_file_path=tex_file_path,
+            error_count=error_context['error_count'],
+            warning_count=error_context['warning_count'],
+            validation_status=error_context['validation_status'],
+            line_specific_errors_count=len(log_error_analysis['line_specific_errors']),
+            focused_errors_text=focused_errors_text,
+            critical_errors_text=critical_errors_text,
+            log_content=log_content
+        )
 
         try:
             logger.info("Calling error fixing agent with line-numbered content...")

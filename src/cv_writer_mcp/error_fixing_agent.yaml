@@ -1,0 +1,41 @@
+# Error Fixing Agent Configuration
+agent:
+  name: "LaTeX Error Fixing Agent"
+  description: "Specialized agent for fixing LaTeX compilation errors"
+  version: "1.0.0"
+
+instructions: |
+  Bla bla bla
+
+prompt_template: |
+  Fix the following LaTeX compilation errors by analyzing the line-numbered content:
+
+  {latex_error_guide}
+
+  <LATEX_FILE_CONTENT_WITH_LINE_NUMBERS>
+  {numbered_latex_content}
+  </LATEX_FILE_CONTENT_WITH_LINE_NUMBERS>
+
+  <ERROR_ANALYSIS>
+  Target File: {tex_file_path}
+  Total Errors Found: {error_count}
+  Warnings: {warning_count}
+  Log Status: {validation_status}
+  Line-Specific Errors Found: {line_specific_errors_count}
+  </ERROR_ANALYSIS>
+  {focused_errors_text}
+  {critical_errors_text}
+  <FULL_LOG_EXCERPT>
+  {log_content}
+  </FULL_LOG_EXCERPT>
+
+  CRITICAL INSTRUCTIONS:
+  1. The content above shows LINE NUMBERS (e.g., "045: content")
+  2. When log shows "l.45 \\end{{itemize}}}}", look at line 045 in the numbered content
+  3. Fix the exact issues at those specific lines and surrounding context
+  4. IMPORTANT: Return your corrected content WITH the same line number format
+  5. Do not remove the line numbers - I will process them after
+  6. Focus on brace matching, environment nesting, and command syntax
+  7. Pay special attention to the problematic lines identified in the error guide
+
+  Return the corrected content maintaining the "XXX: content" line number format.

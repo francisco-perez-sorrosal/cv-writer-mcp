@@ -24,7 +24,7 @@ class LaTeXOutput(BaseModel):
 class MD2LaTeXAgent:
     """Markdown to LaTeX conversion agent using OpenAI Agents SDK with moderncv template."""
 
-    def __init__(self, api_key: str | None = None, model: str = "gpt-4.1-mini"):
+    def __init__(self, api_key: str | None = None, model: str = "gpt-5-mini"):
         """Initialize the markdown to LaTeX conversion agent.
 
         Args:

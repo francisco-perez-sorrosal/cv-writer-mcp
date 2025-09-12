@@ -363,8 +363,7 @@ def check_latex() -> None:
     # For now, only check PDFLATEX (keeping scaffolding for future engines)
     engine = LaTeXEngine.PDFLATEX
     is_installed = latex_compiler.check_latex_installation(engine)
-    status = "✅" if is_installed else "❌"
-    console.print(f"{status} {engine}")
+    console.print(f"{'✅' if is_installed else '❌'} {engine}")
 
 
 @app.command()
@@ -374,6 +373,7 @@ def compile_latex(
     latex_engine: str = typer.Option(
         "pdflatex", "--engine", "-e", help="LaTeX engine to use"
     ),
+    max_attempts: int = typer.Option(5, "--max-attempts", "-m", help="Maximum number of attempts to compile the LaTeX file"),
     debug: bool = typer.Option(False, "--debug", help="Run in debug mode"),
 ) -> None:
     """Compile a LaTeX file to PDF from the command line."""
@@ -420,7 +420,7 @@ def compile_latex(
             output_filename=output_file
             or "",  # Convert None to empty string for lazy initialization
             latex_engine=LaTeXEngine(latex_engine),
-            max_attempts=3,
+            max_attempts=max_attempts,
             user_instructions="",
         )
 

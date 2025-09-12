@@ -99,7 +99,7 @@ class CompilationAgent:
                 "\n- A summary of the compilation output highlighting key information"
             ),
             tools=[latex2pdf_tool],
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             output_type=CompilerAgentOutput,
         )
 
@@ -269,7 +269,7 @@ class CompilationAgent:
         compilation_prompt = f"""
         Please compile the LaTeX file using the compile_latex_tool with these parameters:
 
-        command: "{engine} -interaction=nonstopmode -output-directory {output_dir_abs} {tex_file_abs}"
+        command: "{engine.value} -interaction=nonstopmode -output-directory {output_dir_abs} {tex_file_abs}"
         tex_file_path: "{tex_file_abs}"
         output_dir: "{output_dir_abs}"
 

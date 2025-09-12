@@ -3,7 +3,9 @@
 import re
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict
 
+import yaml
 from loguru import logger
 
 
@@ -44,3 +46,33 @@ def create_timestamped_version(tex_file_path: Path) -> Path:
     except Exception as e:
         logger.error(f"Failed to create timestamped version: {str(e)}")
         return tex_file_path  # Return original path if backup fails
+
+
+def load_agent_config(config_file: str) -> Dict[str, Any]:
+    """Load agent configuration from a YAML file.
+
+    Args:
+        config_file_path: Path to the YAML configuration file
+
+    Returns:
+        Dictionary containing the agent configuration
+
+    Raises:
+        Exception: If the configuration file doesn't exist or if the
+        if the YAML file is malformed
+    """
+    
+    config_file_path = Path(__file__).parent / Path(config_file)
+
+    if not config_file_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_file_path}")
+
+    try:
+        with open(config_file_path, encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        
+        logger.info(f"Loaded agent configuration from: {config_file_path}")
+        return config
+    except Exception as e:
+        logger.error(f"Error loadding YAML configuration file {config_file_path}: {e}")
+        raise
