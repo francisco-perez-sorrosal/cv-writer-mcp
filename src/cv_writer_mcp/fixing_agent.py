@@ -469,42 +469,6 @@ class ErrorFixingAgent:
         
         return error_fixing_prompt
 
-    def _read_moderncv_user_guide(self) -> str:
-        """Read the moderncv user guide from the context directory."""
-        try:
-            # Try to find the moderncv user guide in the context/latex directory
-            latex_dir = Path("context") / "latex"
-            if self.server_config and self.server_config.templates_dir:
-                latex_dir = self.server_config.templates_dir
-
-            user_guide_path = latex_dir / "moderncv_userguide.txt"
-            return read_text_file(user_guide_path, "ModernCV user guide", ".txt")
-
-        except FileNotFoundError:
-            logger.warning(f"ModernCV user guide not found at {user_guide_path}")
-            return "ModernCV user guide not available"
-        except Exception as e:
-            logger.error(f"Error reading ModernCV user guide: {e}")
-            return "Error loading ModernCV user guide"
-
-    def _read_moderncv_template(self) -> str:
-        """Read the moderncv template from the context directory."""
-        try:
-            # Try to find the moderncv template in the context directory
-            templates_dir = Path("context/latex")
-            if self.server_config and self.server_config.templates_dir:
-                templates_dir = self.server_config.templates_dir / "latex"
-
-            template_path = templates_dir / "moderncv_template.tex"
-            return read_text_file(template_path, "ModernCV template", ".tex")
-
-        except FileNotFoundError:
-            logger.warning(f"ModernCV template not found at {template_path}")
-            return "ModernCV template not available"
-        except Exception as e:
-            logger.error(f"Error reading ModernCV template: {e}")
-            return "Error loading ModernCV template"
-
     def create_error_fixing_agent(self) -> Agent:
         """Create an agent specialized in fixing LaTeX compilation errors.
 
@@ -515,8 +479,8 @@ class ErrorFixingAgent:
             An Agent configured for LaTeX error fixing
         """
         # Read the ModernCV user guide and template
-        moderncv_guide = self._read_moderncv_user_guide()
-        moderncv_template = self._read_moderncv_template()
+        moderncv_guide = read_text_file(Path("context/latex") / "moderncv_userguide.txt", "ModernCV user guide", ".txt")
+        moderncv_template = read_text_file(Path("context/latex") / "moderncv_template.tex", "ModernCV template", ".tex")
 
         # Get the error fixing agent instructions from YAML configuration
         error_fixing_instructions = self.agent_config["instructions"].format(
