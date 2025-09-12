@@ -59,14 +59,15 @@ class CompileLaTeXRequest(BaseModel):
     """Request model for LaTeX to PDF compilation."""
 
     tex_filename: str = Field(..., description="Name of the .tex file to compile")
-    output_filename: str | None = Field(
-        None, description="Custom output filename for PDF"
+    output_filename: str = Field(
+        default_factory=lambda: "", description="Custom output filename for PDF"
     )
     latex_engine: LaTeXEngine = Field(
         LaTeXEngine.PDFLATEX, description="LaTeX engine to use"
     )
-    use_agent: bool = Field(
-        True, description="Whether to use AI agents for compilation"
+    max_attempts: int = Field(3, description="Maximum number of compilation attempts")
+    user_instructions: str = Field(
+        "", description="Optional additional instructions for the agents"
     )
 
     @field_validator("tex_filename")
@@ -79,6 +80,16 @@ class CompileLaTeXRequest(BaseModel):
         if not v.endswith(".tex"):
             v += ".tex"
         return v
+
+    def model_post_init(self, __context: Any) -> None:
+        """Post-initialization to set default output filename if not provided."""
+        if not self.output_filename:
+            # Generate output filename from tex filename
+            self.output_filename = f"{self.tex_filename.replace('.tex', '')}.pdf"
+
+        # Ensure output filename has .pdf extension
+        if not self.output_filename.endswith(".pdf"):
+            self.output_filename += ".pdf"
 
 
 class CompileLaTeXResponse(BaseModel):
@@ -97,7 +108,7 @@ class CompileLaTeXResponse(BaseModel):
     )
 
 
-class LaTeXCompilationResult(BaseModel):
+class OrchestrationResult(BaseModel):
     """Result of LaTeX compilation."""
 
     success: bool
@@ -107,7 +118,6 @@ class LaTeXCompilationResult(BaseModel):
     compilation_time: float = 0.0
 
     def __str__(self) -> str:
-        """String representation of LaTeX compilation result."""
         lines = [
             "LaTeX Compilation Result:",
             f"  Success: {self.success}",
@@ -125,7 +135,7 @@ class LaTeXCompilationResult(BaseModel):
         return "\n".join(lines)
 
 
-class CompilationAgentOutput(BaseModel):
+class CompilerAgentOutput(BaseModel):
     """Structured output from the LaTeX compilation agent."""
 
     success: bool = Field(..., description="Whether the compilation was successful")
@@ -140,7 +150,6 @@ class CompilationAgentOutput(BaseModel):
     output_path: str = Field(..., description="Path where the PDF was generated")
 
     def __str__(self) -> str:
-        """String representation of compilation agent output."""
         lines = [
             "Compilation Agent Output:",
             f"  Success: {self.success}",
@@ -173,7 +182,6 @@ class ErrorFix(BaseModel):
     )
 
     def __str__(self) -> str:
-        """String representation of error fix."""
         lines = [
             "Error Fix:",
             f"  Type: {self.error_type}",

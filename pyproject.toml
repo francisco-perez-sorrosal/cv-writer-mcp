@@ -42,7 +42,7 @@ cv-writer-mcp = { path = ".", editable = true }
 
 [tool.pixi.tasks]
 install = "pip install -e ."
-start = "python -m cv_writer_mcp start"
+start_mcps = "python -m cv_writer_mcp start_mcps"
 dev = "python -m cv_writer_mcp start --dev"
 check-latex = "python -m cv_writer_mcp check-latex"
 compile-latex = "python -m cv_writer_mcp compile-latex --debug output/kk.tex --output kk.pdf"

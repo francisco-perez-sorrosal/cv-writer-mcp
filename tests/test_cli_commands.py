@@ -2,7 +2,7 @@
 
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from typer.testing import CliRunner
 
@@ -48,7 +48,7 @@ class TestCLICommands:
                 metadata={"output_filename": "test.pdf", "engine": "pdflatex"},
             )
 
-            mock_compiler.compile_latex_file.return_value = mock_response
+            mock_compiler.compile_latex_file = AsyncMock(return_value=mock_response)
 
             result = self.runner.invoke(app, ["compile-latex", str(tex_file)])
 
@@ -114,7 +114,7 @@ class TestCLICommands:
                 error_message="Compilation failed: Missing package",
             )
 
-            mock_compiler.compile_latex_file.return_value = mock_response
+            mock_compiler.compile_latex_file = AsyncMock(return_value=mock_response)
 
             result = self.runner.invoke(app, ["compile-latex", str(tex_file)])
 
@@ -143,7 +143,7 @@ class TestCLICommands:
                 metadata={"output_filename": "custom.pdf", "engine": "pdflatex"},
             )
 
-            mock_compiler.compile_latex_file.return_value = mock_response
+            mock_compiler.compile_latex_file = AsyncMock(return_value=mock_response)
 
             result = self.runner.invoke(
                 app, ["compile-latex", str(tex_file), "--output", "custom.pdf"]
@@ -174,7 +174,7 @@ class TestCLICommands:
                 metadata={"output_filename": "test.pdf", "engine": "pdflatex"},
             )
 
-            mock_compiler.compile_latex_file.return_value = mock_response
+            mock_compiler.compile_latex_file = AsyncMock(return_value=mock_response)
 
             result = self.runner.invoke(
                 app, ["compile-latex", str(tex_file), "--debug"]
@@ -204,7 +204,7 @@ class TestCLICommands:
                 metadata={"output_filename": "test.pdf", "engine": "pdflatex"},
             )
 
-            mock_compiler.compile_latex_file.return_value = mock_response
+            mock_compiler.compile_latex_file = AsyncMock(return_value=mock_response)
 
             result = self.runner.invoke(
                 app, ["compile-latex", str(tex_file), "--engine", "pdflatex"]

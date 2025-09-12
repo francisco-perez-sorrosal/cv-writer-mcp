@@ -1,6 +1,5 @@
 """LaTeX compilation functionality."""
 
-import asyncio
 import json
 import subprocess
 from pathlib import Path
@@ -139,10 +138,10 @@ class LaTeXExpert:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return False
 
-    async def compile_from_request(
+    async def compile_latex_file(
         self, request: CompileLaTeXRequest
     ) -> CompileLaTeXResponse:
-        """Compile LaTeX file to PDF from a request.
+        """Compile LaTeX file to PDF using intelligent agents.
 
         Args:
             request: LaTeX to PDF compilation request
@@ -169,14 +168,8 @@ class LaTeXExpert:
                     error_message=f"LaTeX file not found: {request.tex_filename}",
                 )
 
-            # Determine output filename
-            output_filename = (
-                request.output_filename
-                or f"{request.tex_filename.replace('.tex', '')}.pdf"
-            )
-            if not output_filename.endswith(".pdf"):
-                output_filename += ".pdf"
-
+            # Use the output filename from the request (already processed in model_post_init)
+            output_filename = request.output_filename
             output_path = self.config.output_dir / output_filename
 
             # Orchestrate LaTeX compilation with agents
@@ -322,8 +315,10 @@ class LaTeXExpert:
                     # Failed compilation: - Track it and log the result
                     self._compilation_diagnostics.increment("failed_compilations")
                     # Log complete compilation result information using string representation
-                    logger.error(f"Compilation failed (Attempt {attempt})")
-                    logger.error(f"{compilation_result}")
+                    logger.warning(f"--------------------------------")
+                    logger.warning(f"Compilation failed (Attempt {attempt})")
+                    logger.warning(f"{compilation_result}")
+                    logger.warning(f"--------------------------------")
 
                     if attempt < max_attempts:
                         # Step 2: Fix errors with error fixing agent

@@ -113,11 +113,11 @@ Configure the transport using the `TRANSPORT` environment variable:
 ```bash
 # For Claude Desktop integration (default)
 export TRANSPORT="stdio"
-pixi run start
+pixi run start_mcps
 
 # For HTTP-based clients
 export TRANSPORT="streamable-http"
-pixi run start
+pixi run start_mcps
 ```
 
 ### FastMCP Server
@@ -126,13 +126,13 @@ Start the FastMCP server (provides both MCP tools and HTTP API):
 
 ```bash
 # Run the server (default: localhost:8000)
-pixi run start
+pixi run start_mcps
 
 # Run with custom host and port
-pixi run start --host 0.0.0.0 --port 9000
+pixi run start_mcps --host 0.0.0.0 --port 9000
 
 # Run in development mode
-pixi run start --dev
+pixi run start_mcps --dev
 ```
 
 The FastMCP server provides MCP tools and resources:
@@ -189,13 +189,13 @@ The server provides CLI commands for intelligent LaTeX compilation:
 
 ```bash
 # Start the MCP server
-pixi run start
+pixi run start_mcps
 
 # Start server with custom host and port
-pixi run start --host 0.0.0.0 --port 9000
+pixi run start_mcps --host 0.0.0.0 --port 9000
 
 # Start server in development mode
-pixi run start --debug
+pixi run start_mcps --debug
 
 # Check LaTeX installation
 pixi run check-latex

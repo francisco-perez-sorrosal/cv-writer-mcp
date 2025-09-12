@@ -104,7 +104,7 @@ class TestCompileLaTeXRequest:
         )
 
         assert request.tex_filename == "test.tex"
-        assert request.output_filename is None
+        assert request.output_filename == "test.pdf"  # Auto-generated from tex_filename
         assert request.latex_engine == LaTeXEngine.PDFLATEX
 
     def test_tex_filename_auto_extension(self):

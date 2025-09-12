@@ -1,5 +1,6 @@
 """Main entry point for CV Writer MCP Server."""
 
+import asyncio
 import os
 import sys
 from datetime import datetime
@@ -16,9 +17,10 @@ from rich.panel import Panel
 from rich.text import Text
 
 from .cv_converter import CVConverter
-from .latex_compiler import LaTeXExpert
+from .latex_expert import LaTeXExpert
 from .logger import LogConfig, LogLevel, configure_logger
 from .models import (
+    CompileLaTeXRequest,
     CompileLaTeXResponse,
     ConversionStatus,
     HealthStatusResponse,
@@ -162,8 +164,7 @@ def setup_mcp_server(
     @mcp.tool(structured_output=True)
     async def compile_latex_to_pdf(
         tex_filename: str = Field(..., description="Name of the .tex file to compile"),
-        output_filename: str | None = Field(
-            None, description="Custom output filename for PDF (optional)"
+        output_filename: str = Field("", description="Custom output filename for PDF (optional)"
         ),
         latex_engine: LaTeXEngine = Field(
             LaTeXEngine.PDFLATEX, description="LaTeX engine to use"
@@ -186,12 +187,17 @@ def setup_mcp_server(
                 error_message="Server not initialized",
             )
 
-        # Use the LaTeXExpert's synchronous compilation method
-        return latex_expert.compile_latex_file(
+        # Create request object
+        request = CompileLaTeXRequest(
             tex_filename=tex_filename,
             output_filename=output_filename,
             latex_engine=latex_engine,
+            max_attempts=3,
+            user_instructions="",
         )
+
+        # Use the LaTeXExpert's async compilation method
+        return await latex_expert.compile_latex_file(request)
 
     @mcp.tool()
     async def check_latex_installation(
@@ -269,7 +275,7 @@ def setup_mcp_server(
 
 
 @app.command()
-def start(
+def start_mcps(
     debug: bool = typer.Option(False, "--debug", help="Run in debug/development mode"),
     host: str = typer.Option(
         "localhost", "--host", help="Host to bind the MCP Server to"
@@ -364,9 +370,7 @@ def check_latex() -> None:
 @app.command()
 def compile_latex(
     tex_file: str = typer.Argument(..., help="Path to the .tex file to compile"),
-    output_file: str = typer.Option(
-        None, "--output", "-o", help="Custom output filename for PDF"
-    ),
+    output_file: str = typer.Option("", "--output", "-o", help="Custom output filename for PDF"),
     latex_engine: str = typer.Option(
         "pdflatex", "--engine", "-e", help="LaTeX engine to use"
     ),
@@ -389,12 +393,11 @@ def compile_latex(
         raise typer.Exit(1)
 
     # Create LaTeX compiler
-    latex_compiler = LaTeXExpert(config=config)
+    latex_expert = LaTeXExpert(config=config)
 
     # Check LaTeX installation first
-    if not latex_compiler.check_latex_installation(LaTeXEngine(latex_engine)):
+    if not latex_expert.check_latex_installation(LaTeXEngine(latex_engine)):
         console.print("[red]❌ Error: LaTeX is not installed or not accessible[/red]")
-        console.print("[yellow]Please install LaTeX to use this service.[/yellow]")
         raise typer.Exit(1)
 
     console.print("[green]✅ LaTeX installation verified[/green]")
@@ -404,11 +407,24 @@ def compile_latex(
 
     # Compile the LaTeX file
     try:
-        response = latex_compiler.compile_latex_file(
+        # Handle asyncio loop for CLI context
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        # Create request object
+        request = CompileLaTeXRequest(
             tex_filename=tex_path.name,  # Use just the filename, not the full path
-            output_filename=output_file,
-            latex_engine=latex_engine,
+            output_filename=output_file
+            or "",  # Convert None to empty string for lazy initialization
+            latex_engine=LaTeXEngine(latex_engine),
+            max_attempts=3,
+            user_instructions="",
         )
+
+        response = loop.run_until_complete(latex_expert.compile_latex_file(request))
 
         if response.status.value == "success":
             console.print("[green]✅ Successfully compiled LaTeX to PDF[/green]")
