@@ -10,6 +10,7 @@ from loguru import logger
 
 from .compiler_agent import CompilationAgent
 from .fixing_agent import ErrorFixingAgent
+from .utils import read_text_file
 from .models import (
     CompilationDiagnostics,
     CompileLaTeXRequest,
@@ -230,19 +231,17 @@ class LaTeXExpert:
             """
             try:
                 file_path_obj = Path(file_path)
-
-                if not file_path_obj.exists():
-                    result = FileOperationResult.create_error_file_not_found(
-                        file_path, FileOperationType.READ
-                    )
-                    return result.to_json()
-
-                file_content = file_path_obj.read_text(encoding="utf-8")
+                file_content = read_text_file(file_path_obj, "file")
                 result = FileOperationResult.create_success_read(
                     file_path, file_content, len(file_content.splitlines())
                 )
                 return result.to_json()
 
+            except FileNotFoundError:
+                result = FileOperationResult.create_error_file_not_found(
+                    file_path, FileOperationType.READ
+                )
+                return result.to_json()
             except Exception as e:
                 result = FileOperationResult.create_error_tool_exception(
                     file_path, FileOperationType.READ, e

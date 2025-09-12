@@ -18,6 +18,7 @@ from rich.text import Text
 
 from .cv_converter import CVConverter
 from .latex_expert import LaTeXExpert
+from .utils import read_text_file
 from .logger import LogConfig, LogLevel, configure_logger
 from .models import (
     CompileLaTeXRequest,
@@ -265,10 +266,7 @@ def setup_mcp_server(
 
         tex_path = config.output_dir / filename
 
-        if not tex_path.exists() or tex_path.suffix.lower() != ".tex":
-            raise FileNotFoundError(f"LaTeX file {filename} not found")
-
-        return tex_path.read_text(encoding="utf-8")
+        return read_text_file(tex_path, "LaTeX file", ".tex")
 
 
 ### CLI Commands to test the MCP Server functionality ###

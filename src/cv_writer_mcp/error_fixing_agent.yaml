@@ -50,8 +50,15 @@ prompt_template: |
   Log Status: {validation_status}
   Line-Specific Errors Found: {line_specific_errors_count}
   </ERROR_ANALYSIS>
+  
+  <FOCUSED_ERRORS>
   {focused_errors_text}
+  </FOCUSED_ERRORS>
+  
+  <CRITICAL_ERRORS>
   {critical_errors_text}
+  </CRITICAL_ERRORS>
+  
   <FULL_LOG_EXCERPT>
   {log_content}
   </FULL_LOG_EXCERPT>

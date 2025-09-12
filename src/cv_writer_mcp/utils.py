@@ -48,6 +48,54 @@ def create_timestamped_version(tex_file_path: Path) -> Path:
         return tex_file_path  # Return original path if backup fails
 
 
+def read_text_file(
+    file_path: Path, 
+    description: str = "file", 
+    expected_extension: str | None = None
+) -> str:
+    """Read text content from a file with proper error handling and logging.
+
+    Args:
+        file_path: Path to the file to read
+        description: Human-readable description of the file for logging
+        expected_extension: Optional expected file extension (e.g., '.tex', '.yaml', '.txt')
+                           If provided, validates that the file has the expected extension
+
+    Returns:
+        File content as string
+
+    Raises:
+        FileNotFoundError: If the file doesn't exist
+        ValueError: If the file doesn't have the expected extension
+        UnicodeDecodeError: If the file can't be decoded as UTF-8
+        Exception: For other file reading errors
+    """
+    if not file_path.exists():
+        raise FileNotFoundError(f"{description.capitalize()} not found: {file_path}")
+
+    # Validate file extension if specified
+    if expected_extension:
+        if not expected_extension.startswith('.'):
+            expected_extension = f".{expected_extension}"
+        
+        if file_path.suffix.lower() != expected_extension.lower():
+            raise ValueError(
+                f"{description.capitalize()} must have {expected_extension} extension, "
+                f"but found {file_path.suffix}: {file_path}"
+            )
+
+    try:
+        content = file_path.read_text(encoding="utf-8")
+        logger.info(f"Successfully read {description} ({len(content)} characters): {file_path}")
+        return content
+    except UnicodeDecodeError as e:
+        logger.error(f"Failed to decode {description} as UTF-8: {file_path} - {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Failed to read {description}: {file_path} - {e}")
+        raise
+
+
 def load_agent_config(config_file: str) -> Dict[str, Any]:
     """Load agent configuration from a YAML file.
 

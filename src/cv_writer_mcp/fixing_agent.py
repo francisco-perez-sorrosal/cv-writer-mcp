@@ -16,7 +16,7 @@ from .models import (
     ErrorFixingAgentOutput,
     ServerConfig,
 )
-from .utils import create_timestamped_version, load_agent_config
+from .utils import create_timestamped_version, load_agent_config, read_text_file
 
 
 class ErrorFixingAgent:
@@ -407,6 +407,68 @@ class ErrorFixingAgent:
 
         return error_analysis
 
+    def build_fixing_prompt(
+        self,
+        latex_content: str,
+        tex_file_path: Path,
+        error_context: dict[str, Any],
+        log_content: str,
+    ) -> str:
+        """Build the error fixing prompt with all necessary components.
+        
+        Args:
+            latex_content: Raw LaTeX content to be fixed
+            tex_file_path: Path to the .tex file being fixed
+            error_context: Error context extracted from compilation logs
+            log_content: Full log content for analysis
+            
+        Returns:
+            Formatted error fixing prompt string
+        """
+        # Prepare line-numbered LaTeX content for precise error fixing
+        numbered_latex_content, line_mapping = self._prepare_numbered_latex_for_agent(
+            latex_content
+        )
+        
+        # Create LaTeX error guide
+        latex_error_guide = self._create_latex_error_guide(error_context)
+        
+        # Analyze LaTeX log errors
+        log_error_analysis = self._analyze_latex_log_errors(log_content)
+        
+        # Build focused errors text
+        focused_errors_text = ""
+        if error_context["focused_errors"]:
+            for i, error in enumerate(error_context["focused_errors"], 1):
+                focused_errors_text += (
+                    f"{i}. {error['description']}: {error['error_text']}"
+                )
+                if error["line_number"]:
+                    focused_errors_text += f" (Line {error['line_number']})"
+                focused_errors_text += f"\n   Context: {error['context'][:200]}...\n"
+
+        # Build critical errors text
+        critical_errors_text = ""
+        if error_context["critical_errors"]:
+            for error in error_context["critical_errors"]:
+                critical_errors_text += f"- {error}\n"
+
+        # Format the prompt template with all variables
+        error_fixing_prompt = self.agent_config["prompt_template"].format(
+            latex_error_guide=latex_error_guide,
+            numbered_latex_content=numbered_latex_content,
+            tex_file_path=tex_file_path,
+            error_count=error_context['error_count'],
+            warning_count=error_context['warning_count'],
+            validation_status=error_context['validation_status'],
+            line_specific_errors_count=len(log_error_analysis['line_specific_errors']),
+            focused_errors_text=focused_errors_text,
+            critical_errors_text=critical_errors_text,
+            log_content=log_content
+        )
+        
+        return error_fixing_prompt
+
     def _read_moderncv_user_guide(self) -> str:
         """Read the moderncv user guide from the context directory."""
         try:
@@ -416,18 +478,11 @@ class ErrorFixingAgent:
                 latex_dir = self.server_config.templates_dir
 
             user_guide_path = latex_dir / "moderncv_userguide.txt"
+            return read_text_file(user_guide_path, "ModernCV user guide", ".txt")
 
-            if not user_guide_path.exists():
-                logger.warning(f"ModernCV user guide not found at {user_guide_path}")
-                return "ModernCV user guide not available"
-
-            with open(user_guide_path, encoding="utf-8") as f:
-                content = f.read()
-                logger.info(
-                    f"Successfully loaded ModernCV user guide ({len(content)} characters)"
-                )
-                return content
-
+        except FileNotFoundError:
+            logger.warning(f"ModernCV user guide not found at {user_guide_path}")
+            return "ModernCV user guide not available"
         except Exception as e:
             logger.error(f"Error reading ModernCV user guide: {e}")
             return "Error loading ModernCV user guide"
@@ -441,18 +496,11 @@ class ErrorFixingAgent:
                 templates_dir = self.server_config.templates_dir / "latex"
 
             template_path = templates_dir / "moderncv_template.tex"
+            return read_text_file(template_path, "ModernCV template", ".tex")
 
-            if not template_path.exists():
-                logger.warning(f"ModernCV template not found at {template_path}")
-                return "ModernCV template not available"
-
-            with open(template_path, encoding="utf-8") as f:
-                content = f.read()
-                logger.info(
-                    f"Successfully loaded ModernCV template ({len(content)} characters)"
-                )
-                return content
-
+        except FileNotFoundError:
+            logger.warning(f"ModernCV template not found at {template_path}")
+            return "ModernCV template not available"
         except Exception as e:
             logger.error(f"Error reading ModernCV template: {e}")
             return "Error loading ModernCV template"
@@ -576,10 +624,7 @@ class ErrorFixingAgent:
 
         # Read the LaTeX file content
         try:
-            latex_content = Path(tex_file_path).read_text(encoding="utf-8")
-            logger.info(
-                f"Successfully read LaTeX file content ({len(latex_content)} characters)"
-            )
+            latex_content = read_text_file(tex_file_path, "LaTeX file", ".tex")
         except Exception as e:
             logger.error(f"Failed to read LaTeX file content: {e}")
             return (
@@ -594,43 +639,11 @@ class ErrorFixingAgent:
                 None,
             )
 
-        # Prepare line-numbered LaTeX content for precise error fixing
-        numbered_latex_content, line_mapping = self._prepare_numbered_latex_for_agent(
-            latex_content
-        )
-        latex_error_guide = self._create_latex_error_guide(error_context)
-        log_error_analysis = self._analyze_latex_log_errors(log_content)
-
         # Build enhanced error fixing prompt with line numbers
-        focused_errors_text = ""
-        if error_context["focused_errors"]:
-            focused_errors_text = "\n<FOCUSED_ERRORS>\n"
-            for i, error in enumerate(error_context["focused_errors"], 1):
-                focused_errors_text += (
-                    f"{i}. {error['description']}: {error['error_text']}"
-                )
-                if error["line_number"]:
-                    focused_errors_text += f" (Line {error['line_number']})"
-                focused_errors_text += f"\n   Context: {error['context'][:200]}...\n"
-            focused_errors_text += "</FOCUSED_ERRORS>\n"
-
-        critical_errors_text = ""
-        if error_context["critical_errors"]:
-            critical_errors_text = "\n<CRITICAL_ERRORS>\n"
-            for error in error_context["critical_errors"]:
-                critical_errors_text += f"- {error}\n"
-            critical_errors_text += "</CRITICAL_ERRORS>\n"
-
-        error_fixing_prompt = self.agent_config["prompt_template"].format(
-            latex_error_guide=latex_error_guide,
-            numbered_latex_content=numbered_latex_content,
+        error_fixing_prompt = self.build_fixing_prompt(
+            latex_content=latex_content,
             tex_file_path=tex_file_path,
-            error_count=error_context['error_count'],
-            warning_count=error_context['warning_count'],
-            validation_status=error_context['validation_status'],
-            line_specific_errors_count=len(log_error_analysis['line_specific_errors']),
-            focused_errors_text=focused_errors_text,
-            critical_errors_text=critical_errors_text,
+            error_context=error_context,
             log_content=log_content
         )
 

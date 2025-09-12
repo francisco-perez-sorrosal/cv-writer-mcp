@@ -8,6 +8,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from .models import ConversionStatus, MarkdownToLaTeXRequest, MarkdownToLaTeXResponse
+from .utils import read_text_file
 
 
 class LaTeXOutput(BaseModel):
@@ -47,22 +48,12 @@ class MD2LaTeXAgent:
 
         # Load LaTeX template
         template_path = base_path / "context" / "latex" / "moderncv_template.tex"
-        if not template_path.exists():
-            raise FileNotFoundError(
-                f"LaTeX template not found at {template_path}. "
-                "Please ensure the moderncv_template.tex file exists in the context/latex/ directory."
-            )
-        self.latex_template = template_path.read_text(encoding="utf-8")
+        self.latex_template = read_text_file(template_path, "LaTeX template", ".tex")
         logger.info(f"Loaded LaTeX template from {template_path}")
 
         # Load user guide
         userguide_path = base_path / "context" / "latex" / "moderncv_userguide.txt"
-        if not userguide_path.exists():
-            raise FileNotFoundError(
-                f"ModernCV user guide not found at {userguide_path}. "
-                "Please ensure the moderncv_userguide.txt file exists in the context/latex/ directory."
-            )
-        self.userguide_content = userguide_path.read_text(encoding="utf-8")
+        self.userguide_content = read_text_file(userguide_path, "ModernCV user guide", ".txt")
         logger.info(f"Loaded moderncv user guide from {userguide_path}")
 
     def _create_agent(self) -> None:
