@@ -15,6 +15,7 @@ from .models import (
     CompilationDiagnostics,
     ErrorFixingAgentOutput,
     ServerConfig,
+    get_output_type_class,
 )
 from .utils import create_timestamped_version, load_agent_config, read_text_file
 
@@ -488,12 +489,17 @@ class ErrorFixingAgent:
             moderncv_template=moderncv_template
         )
 
+        # Get output type class from centralized mapping
+        output_type_class = get_output_type_class(
+            self.agent_config["agent"]["output_type"]
+        )
+        
         return Agent(
-            name="LaTeX Error Fixing Agent",
+            name=self.agent_config["agent"]["name"],
             instructions=error_fixing_instructions,
             tools=[],  # No tools needed - content passed in prompt
-            model="gpt-5-mini",
-            output_type=ErrorFixingAgentOutput,
+            model=self.agent_config["agent"]["model"],
+            output_type=output_type_class,
         )
 
     def parse_error_fixing_agent_output(

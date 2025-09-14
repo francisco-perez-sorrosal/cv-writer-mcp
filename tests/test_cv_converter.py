@@ -98,4 +98,4 @@ class TestCVConverter:
             response = await converter.convert_markdown_to_latex(request)
 
             assert response.status == ConversionStatus.FAILED
-            assert "Markdown to LaTeX agent not initialized" in response.error_message
+            assert "Markdown to LaTeX agent not initialized" in response.message

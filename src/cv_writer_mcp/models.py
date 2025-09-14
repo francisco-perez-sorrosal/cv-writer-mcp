@@ -9,11 +9,23 @@ from pydantic import BaseModel, Field, field_validator
 from cv_writer_mcp.logger import LogLevel
 
 
+
 class ConversionStatus(str, Enum):
     """Conversion status enumeration."""
 
     SUCCESS = "success"
     FAILED = "failed"
+
+
+class LaTeXOutput(BaseModel):
+    """Structured output for LaTeX conversion."""
+
+    latex_content: str = Field(
+        description="The converted LaTeX content ready for insertion into the template"
+    )
+    conversion_notes: str = Field(
+        description="Notes about the conversion process and any important considerations"
+    )
 
 
 class LaTeXEngine(str, Enum):
@@ -47,11 +59,8 @@ class MarkdownToLaTeXResponse(BaseModel):
     tex_url: str | None = Field(
         None, description="Resource URI to access the generated LaTeX file"
     )
-    error_message: str | None = Field(
-        None, description="Error message if conversion failed"
-    )
-    metadata: dict[str, Any] = Field(
-        default_factory=dict, description="Additional metadata"
+    message: str | None = Field(
+        None, description="Status message with conversion notes, error details, or other information"
     )
 
 
@@ -582,3 +591,28 @@ class ServerConfig(BaseModel):
     def get_base_url(self) -> str:
         """Get the base URL, ensuring it reflects current host and port."""
         return f"http://{self.host}:{self.port}"
+
+
+def get_output_type_class(output_type_name: str):
+    """Get the actual output type class from the string name.
+    
+    Args:
+        output_type_name: String name of the output type from config
+        
+    Returns:
+        The actual class object for the output type
+        
+    Raises:
+        ValueError: If the output type name is not recognized
+    """
+    # Centralized mapping of output type names to actual classes
+    output_type_mapping = {
+        "LaTeXOutput": LaTeXOutput,
+        "CompilerAgentOutput": CompilerAgentOutput,
+        "ErrorFixingAgentOutput": ErrorFixingAgentOutput,
+    }
+    
+    if output_type_name not in output_type_mapping:
+        raise ValueError(f"Unknown output type: {output_type_name}. Available types: {list(output_type_mapping.keys())}")
+    
+    return output_type_mapping[output_type_name]

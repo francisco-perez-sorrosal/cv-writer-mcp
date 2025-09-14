@@ -47,21 +47,17 @@ class CVConverter:
             return MarkdownToLaTeXResponse(
                 status=ConversionStatus.FAILED,
                 tex_url=None,
-                error_message="Markdown to LaTeX agent not initialized. Please check your API key.",
+                message="Markdown to LaTeX agent not initialized. Please check your API key.",
             )
 
         try:
             logger.info("Starting markdown to LaTeX conversion")
-            response = await self.md2latex_agent.convert(request)
-            logger.info(
-                f"Markdown to LaTeX conversion completed with status: {response.status}"
-            )
-            return response
+            return await self.md2latex_agent.convert(request)
 
         except Exception as e:
             logger.error(f"Unexpected error in markdown to LaTeX conversion: {e}")
             return MarkdownToLaTeXResponse(
                 status=ConversionStatus.FAILED,
                 tex_url=None,
-                error_message=f"Unexpected error: {str(e)}",
+                message=f"Unexpected error: {str(e)}",
             )

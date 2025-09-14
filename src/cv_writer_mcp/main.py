@@ -140,7 +140,7 @@ def setup_mcp_server(
             return MarkdownToLaTeXResponse(
                 status=ConversionStatus.FAILED,
                 tex_url=None,
-                error_message="Server not initialized",
+                message="Server not initialized",
             )
 
         try:
@@ -150,8 +150,7 @@ def setup_mcp_server(
             )
 
             # Convert markdown to LaTeX
-            response = await cv_converter.convert_markdown_to_latex(request)
-            return response
+            return await cv_converter.convert_markdown_to_latex(request)            
 
         except Exception as e:
             logger.error(f"Error in markdown_to_latex: {e}")
@@ -159,7 +158,7 @@ def setup_mcp_server(
             return MarkdownToLaTeXResponse(
                 status=ConversionStatus.FAILED,
                 tex_url=None,
-                error_message=f"Error processing markdown to LaTeX conversion request: {str(e)}",
+                message=f"Error processing markdown to LaTeX conversion request: {str(e)}",
             )
 
     @mcp.tool(structured_output=True)

@@ -60,25 +60,22 @@ class TestMarkdownToLaTeXResponse:
         response = MarkdownToLaTeXResponse(
             status=ConversionStatus.SUCCESS,
             tex_url="cv-writer://tex/test.tex",
-            metadata={"output_filename": "test.tex"},
         )
 
         assert response.status == ConversionStatus.SUCCESS
         assert response.tex_url == "cv-writer://tex/test.tex"
-        assert response.error_message is None
-        assert response.metadata == {"output_filename": "test.tex"}
+        assert response.message is None
 
     def test_failed_response(self):
         """Test failed response creation."""
         response = MarkdownToLaTeXResponse(
             status=ConversionStatus.FAILED,
-            error_message="Conversion failed",
+            message="Conversion failed",
         )
 
         assert response.status == ConversionStatus.FAILED
         assert response.tex_url is None
-        assert response.error_message == "Conversion failed"
-        assert response.metadata == {}
+        assert response.message == "Conversion failed"
 
 
 class TestCompileLaTeXRequest:

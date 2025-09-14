@@ -16,8 +16,10 @@ from .models import (
     CompilationDiagnostics,
     OrchestrationResult,
     LaTeXEngine,
+    get_output_type_class,
 )
 from .tools import latex2pdf_tool
+from .utils import load_agent_config
 
 
 class CompilationAgent:
@@ -34,6 +36,7 @@ class CompilationAgent:
         """
         self.timeout = timeout
         self.diagnostics = diagnostics or CompilationDiagnostics()
+        self.agent_config = load_agent_config("compiler_agent.yaml")
 
     def _log_agent_diagnostics(self, stage: str, data: dict[str, Any]) -> None:
         """Enhanced diagnostic logging for agent communication and parsing."""
@@ -75,32 +78,17 @@ class CompilationAgent:
         Returns:
             An Agent configured with function tool for LaTeX compilation
         """
+        # Get output type class from centralized mapping
+        output_type_class = get_output_type_class(
+            self.agent_config["agent_metadata"]["output_type"]
+        )
+        
         return Agent(
-            name="LaTeX Compiler Agent",
-            instructions=(
-                "You are a specialized LaTeX compilation agent. Your role is to:"
-                "\n1. Compile LaTeX files to PDF using shell commands"
-                "\n2. Choose the right LaTeX engine based on the document requirements"
-                "\n3. Execute LaTeX compilation commands using the compile_latex_tool"
-                "\n4. Monitor compilation results and provide detailed feedback"
-                "\n\nWhen compiling:"
-                "\n- Use pdflatex for standard documents"
-                "\n- Use xelatex for documents with Unicode or special fonts"
-                "\n- Use lualatex for advanced Lua scripting features"
-                "\n- Always use the compile_latex_tool to execute LaTeX commands"
-                "\n- Check exit codes to determine success/failure"
-                "\n- Analyze compilation output for errors and warnings"
-                "\n\nIMPORTANT: You must use the compile_latex_tool to execute LaTeX compilation commands."
-                "Do not attempt to compile manually. Always use the tool and report the result."
-                "\n\nProvide a clear explanation of what happened during compilation, including:"
-                "\n- Whether the compilation was successful (exit code 0)"
-                "\n- How long it took"
-                "\n- Any errors encountered and their nature"
-                "\n- A summary of the compilation output highlighting key information"
-            ),
+            name=self.agent_config["agent_metadata"]["name"],
+            instructions=self.agent_config["instructions"],
             tools=[latex2pdf_tool],
-            model="gpt-5-mini",
-            output_type=CompilerAgentOutput,
+            model=self.agent_config["agent_metadata"]["model"],
+            output_type=output_type_class,
         )
 
     def parse_compiler_agent_output(
@@ -262,28 +250,18 @@ class CompilationAgent:
 
         compilation_agent = self.create_compiler_agent()
 
-        # Prepare compilation prompt
+        # Prepare compilation prompt using YAML template
         tex_file_abs = tex_file_path.absolute()
         output_dir_abs = output_path.parent.absolute()
 
-        compilation_prompt = f"""
-        Please compile the LaTeX file using the compile_latex_tool with these parameters:
+        additional_instructions = f"\nAdditional instructions: {user_instructions}" if user_instructions else ""
 
-        command: "{engine.value} -interaction=nonstopmode -output-directory {output_dir_abs} {tex_file_abs}"
-        tex_file_path: "{tex_file_abs}"
-        output_dir: "{output_dir_abs}"
-
-        This will compile the LaTeX file {tex_file_abs} and output the PDF to {output_dir_abs}.
-
-        After execution, please:
-        1. Check if the compilation was successful (exit code 0)
-        2. Report any errors if the compilation failed
-        3. Verify that the PDF file was created
-        4. Provide a summary of the compilation process
-        """
-
-        if user_instructions:
-            compilation_prompt += f"\nAdditional instructions: {user_instructions}"
+        compilation_prompt = self.agent_config["prompt_template"].format(
+            engine=engine.value,
+            output_dir=output_dir_abs,
+            tex_file=tex_file_abs,
+            additional_instructions=additional_instructions
+        )
 
         try:
             compilation_result = await Runner.run(compilation_agent, compilation_prompt)
