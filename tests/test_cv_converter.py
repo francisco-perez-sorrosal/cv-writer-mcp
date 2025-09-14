@@ -8,7 +8,7 @@ import pytest
 
 from cv_writer_mcp.cv_converter import CVConverter
 from cv_writer_mcp.models import (
-    ConversionStatus,
+    CompletionStatus,
     MarkdownToLaTeXRequest,
     MarkdownToLaTeXResponse,
     ServerConfig,
@@ -59,7 +59,7 @@ class TestCVConverter:
             mock_agent = MagicMock()
             mock_agent.convert = AsyncMock(
                 return_value=MarkdownToLaTeXResponse(
-                    status=ConversionStatus.SUCCESS,
+                    status=CompletionStatus.SUCCESS,
                     tex_url="cv-writer://tex/test.tex",
                     metadata={"output_filename": "test.tex"},
                 )
@@ -74,7 +74,7 @@ class TestCVConverter:
 
             response = await converter.convert_markdown_to_latex(request)
 
-            assert response.status == ConversionStatus.SUCCESS
+            assert response.status == CompletionStatus.SUCCESS
             assert response.tex_url == "cv-writer://tex/test.tex"
             mock_agent.convert.assert_called_once_with(request)
 
@@ -97,5 +97,5 @@ class TestCVConverter:
 
             response = await converter.convert_markdown_to_latex(request)
 
-            assert response.status == ConversionStatus.FAILED
+            assert response.status == CompletionStatus.FAILED
             assert "Markdown to LaTeX agent not initialized" in response.message

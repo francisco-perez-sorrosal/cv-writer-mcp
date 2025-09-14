@@ -10,8 +10,8 @@ from cv_writer_mcp.logger import LogLevel
 
 
 
-class ConversionStatus(str, Enum):
-    """Conversion status enumeration."""
+class CompletionStatus(str, Enum):
+    """Generic completion status enumeration."""
 
     SUCCESS = "success"
     FAILED = "failed"
@@ -55,7 +55,7 @@ class MarkdownToLaTeXRequest(BaseModel):
 class MarkdownToLaTeXResponse(BaseModel):
     """Response model for markdown to LaTeX conversion."""
 
-    status: ConversionStatus
+    status: CompletionStatus
     tex_url: str | None = Field(
         None, description="Resource URI to access the generated LaTeX file"
     )
@@ -104,34 +104,30 @@ class CompileLaTeXRequest(BaseModel):
 class CompileLaTeXResponse(BaseModel):
     """Response model for LaTeX to PDF compilation."""
 
-    status: ConversionStatus
-
+    status: CompletionStatus
     pdf_url: str | None = Field(
         None, description="Resource URI to access the generated PDF"
     )
-    error_message: str | None = Field(
-        None, description="Error message if compilation failed"
-    )
-    metadata: dict[str, Any] = Field(
-        default_factory=dict, description="Additional metadata"
+    message: str | None = Field(
+        None, description="Status message with compilation details, error information, or other details"
     )
 
 
 class OrchestrationResult(BaseModel):
     """Result of LaTeX compilation."""
 
-    success: bool
+    status: CompletionStatus
     output_path: Path | None = None
     log_output: str = ""
-    error_message: str | None = None
+    message: str | None = None
     compilation_time: float = 0.0
 
     def __str__(self) -> str:
         lines = [
             "LaTeX Compilation Result:",
-            f"  Success: {self.success}",
+            f"  Status: {self.status.value}",
             f"  Compilation Time: {self.compilation_time:.2f} seconds",
-            f"  Error Message: {self.error_message}",
+            f"  Message: {self.message}",
             f"  Output Path: {self.output_path}",
         ]
         if self.log_output:
@@ -147,12 +143,12 @@ class OrchestrationResult(BaseModel):
 class CompilerAgentOutput(BaseModel):
     """Structured output from the LaTeX compilation agent."""
 
-    success: bool = Field(..., description="Whether the compilation was successful")
+    status: CompletionStatus = Field(..., description="Whether the compilation was successful")
     compilation_time: float = Field(
         ..., description="Time taken for compilation in seconds"
     )
-    error_message: str | None = Field(
-        None, description="Error message if compilation failed"
+    message: str | None = Field(
+        None, description="Status message with compilation details or error information"
     )
     log_summary: str = Field("", description="Summary of compilation log output")
     engine_used: str = Field(..., description="LaTeX engine that was used")
@@ -161,9 +157,9 @@ class CompilerAgentOutput(BaseModel):
     def __str__(self) -> str:
         lines = [
             "Compilation Agent Output:",
-            f"  Success: {self.success}",
+            f"  Status: {self.status.value}",
             f"  Compilation Time: {self.compilation_time:.2f} seconds",
-            f"  Error Message: {self.error_message}",
+            f"  Message: {self.message}",
             f"  Engine Used: {self.engine_used}",
             f"  Output Path: {self.output_path}",
         ]
@@ -205,6 +201,9 @@ class ErrorFix(BaseModel):
 class ErrorFixingAgentOutput(BaseModel):
     """Structured output from the LaTeX error fixing agent."""
 
+    status: CompletionStatus = Field(
+        ..., description="Whether the error fixing process was successful"
+    )
     fixes_applied: list[ErrorFix] = Field(
         ..., description="List of fixes that were applied"
     )
@@ -212,10 +211,9 @@ class ErrorFixingAgentOutput(BaseModel):
         ..., description="Whether the LaTeX file was actually modified"
     )
     total_fixes: int = Field(..., description="Total number of fixes applied")
-    success: bool = Field(
-        ..., description="Whether the error fixing process was successful"
+    message: str | None = Field(
+        None, description="Status message with explanation of what was fixed, error details, or other information"
     )
-    explanation: str = Field("", description="Explanation of what was fixed and why")
     remaining_issues: list[str] = Field(
         default_factory=list, description="Any remaining issues that couldn't be fixed"
     )
@@ -227,10 +225,10 @@ class ErrorFixingAgentOutput(BaseModel):
         """String representation of error fixing agent output."""
         lines = [
             "Error Fixing Agent Output:",
-            f"  Success: {self.success}",
+            f"  Status: {self.status.value}",
             f"  File Modified: {self.file_modified}",
             f"  Total Fixes: {self.total_fixes}",
-            f"  Explanation: {self.explanation}",
+            f"  Message: {self.message}",
         ]
         if self.fixes_applied:
             lines.append("  Fixes Applied:")
@@ -263,71 +261,22 @@ class FileOperationType(str, Enum):
 
 
 class FileOperationResult(BaseModel):
-    """Unified result model for file editing operations.
+    """Simplified result model for file operations."""
 
-    This model elegantly handles all possible return cases from file editing operations
-    by using optional fields and a success flag. It can represent both successful
-    operations and various error conditions with appropriate metadata.
-    """
-
-    # Core status
     success: bool = Field(..., description="Whether the operation was successful")
-
-    # Operation details
     operation: FileOperationType = Field(..., description="Type of operation performed")
     file_path: str = Field(..., description="Path to the file that was operated on")
-
-    # Success-specific fields (only populated when success=True)
-    content: str | None = Field(
-        default=None, description="File content (for read operations)"
-    )
-    message: str | None = Field(
-        default=None, description="Success message describing what was accomplished"
-    )
-    line_count: int | None = Field(
-        default=None, description="Number of lines in the file"
-    )
-    file_size: int | None = Field(default=None, description="Size of the file in bytes")
-    verification: str | None = Field(
-        default=None, description="Verification details for write operations"
-    )
-    analysis: dict[str, Any] | None = Field(
-        default=None, description="Additional analysis data (e.g., brace analysis)"
-    )
-
-    # Error-specific fields (only populated when success=False)
-    error: str | None = Field(
-        default=None, description="Error message describing what went wrong"
-    )
-    file_exists: bool | None = Field(
-        default=None, description="Whether the file exists (for error cases)"
-    )
-
-    # Additional metadata
-    line_number: int | None = Field(
-        default=None, description="Line number for replace_line operations"
-    )
-    total_lines: int | None = Field(
-        default=None, description="Total number of lines in file (for range validation)"
-    )
-
-    def model_post_init(self, __context: Any) -> None:
-        """Validate that success/error fields are used appropriately."""
-        if self.success:
-            # For successful operations, we should have either content (read) or message (write/replace)
-            if not (self.content is not None or self.message is not None):
-                raise ValueError(
-                    "Successful operations must have either content or message"
-                )
-        else:
-            # For failed operations, we should have an error message
-            if not self.error:
-                raise ValueError("Failed operations must have an error message")
+    
+    # Success fields
+    content: str | None = Field(default=None, description="File content (for read operations)")
+    message: str | None = Field(default=None, description="Success message")
+    line_count: int | None = Field(default=None, description="Number of lines in the file")
+    
+    # Error fields
+    error: str | None = Field(default=None, description="Error message if operation failed")
 
     @classmethod
-    def create_success_read(
-        cls, file_path: str, content: str, line_count: int
-    ) -> "FileOperationResult":
+    def success_read(cls, file_path: str, content: str, line_count: int) -> "FileOperationResult":
         """Create a successful read operation result."""
         return cls(
             success=True,
@@ -338,97 +287,17 @@ class FileOperationResult(BaseModel):
         )
 
     @classmethod
-    def create_success_write(
-        cls, file_path: str, message: str, line_count: int, file_size: int
-    ) -> "FileOperationResult":
-        """Create a successful write operation result."""
-        return cls(
-            success=True,
-            operation=FileOperationType.WRITE,
-            file_path=file_path,
-            message=message,
-            line_count=line_count,
-            file_size=file_size,
-            verification="File exists and has content",
-        )
-
-    @classmethod
-    def create_success_replace_line(
-        cls, file_path: str, line_number: int, line_count: int, file_size: int
-    ) -> "FileOperationResult":
-        """Create a successful replace_line operation result."""
-        return cls(
-            success=True,
-            operation=FileOperationType.REPLACE_LINE,
-            file_path=file_path,
-            message=f"Line {line_number} replaced successfully",
-            line_count=line_count,
-            file_size=file_size,
-            line_number=line_number,
-            verification="File exists and has content",
-        )
-
-    @classmethod
-    def create_error_file_not_found(
-        cls, file_path: str, operation: FileOperationType
-    ) -> "FileOperationResult":
+    def error_file_not_found(cls, file_path: str, operation: FileOperationType) -> "FileOperationResult":
         """Create a file not found error result."""
         return cls(
             success=False,
             operation=operation,
             file_path=file_path,
             error=f"File not found: {file_path}",
-            file_exists=False,
         )
 
     @classmethod
-    def create_error_write_verification_failed(
-        cls,
-        file_path: str,
-        operation: FileOperationType,
-        file_exists: bool,
-        file_size: int,
-    ) -> "FileOperationResult":
-        """Create a write verification failed error result."""
-        return cls(
-            success=False,
-            operation=operation,
-            file_path=file_path,
-            error=f"File write verification failed: {file_path}",
-            file_exists=file_exists,
-            file_size=file_size,
-        )
-
-    @classmethod
-    def create_error_line_out_of_range(
-        cls, file_path: str, line_number: int, total_lines: int
-    ) -> "FileOperationResult":
-        """Create a line number out of range error result."""
-        return cls(
-            success=False,
-            operation=FileOperationType.REPLACE_LINE,
-            file_path=file_path,
-            error=f"Line number {line_number} out of range (1-{total_lines})",
-            line_number=line_number,
-            total_lines=total_lines,
-        )
-
-    @classmethod
-    def create_error_unknown_action(
-        cls, file_path: str, action: str
-    ) -> "FileOperationResult":
-        """Create an unknown action error result."""
-        return cls(
-            success=False,
-            operation=FileOperationType.READ,  # Default, will be overridden
-            file_path=file_path,
-            error=f"Unknown action: {action}. Use 'read', 'write', or 'replace_line'",
-        )
-
-    @classmethod
-    def create_error_tool_exception(
-        cls, file_path: str, operation: FileOperationType, exception: Exception
-    ) -> "FileOperationResult":
+    def error_exception(cls, file_path: str, operation: FileOperationType, exception: Exception) -> "FileOperationResult":
         """Create a tool exception error result."""
         return cls(
             success=False,
@@ -443,29 +312,21 @@ class FileOperationResult(BaseModel):
 
     def __str__(self) -> str:
         """String representation of file operation result."""
+        status = "SUCCESS" if self.success else "ERROR"
         if self.success:
-            status = "SUCCESS"
             details = []
             if self.content is not None:
-                content_preview = (
-                    self.content[:100] + "..."
-                    if len(self.content) > 100
-                    else self.content
-                )
+                content_preview = self.content[:100] + "..." if len(self.content) > 100 else self.content
                 details.append(f"Content: {content_preview}")
             if self.message:
                 details.append(f"Message: {self.message}")
             if self.line_count is not None:
                 details.append(f"Lines: {self.line_count}")
-            if self.file_size is not None:
-                details.append(f"Size: {self.file_size} bytes")
+            details_str = "; ".join(details) if details else "Operation completed"
         else:
-            status = "ERROR"
-            details = [f"Error: {self.error}"]
-            if self.file_exists is not None:
-                details.append(f"File exists: {self.file_exists}")
-
-        return f"FileOperationResult({status}) - {self.operation.value} {self.file_path}: {'; '.join(details)}"
+            details_str = f"Error: {self.error}"
+        
+        return f"FileOperationResult({status}) - {self.operation.value} {self.file_path}: {details_str}"
 
 
 class CompilationDiagnostics(BaseModel):

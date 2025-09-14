@@ -23,7 +23,7 @@ from .logger import LogConfig, LogLevel, configure_logger
 from .models import (
     CompileLaTeXRequest,
     CompileLaTeXResponse,
-    ConversionStatus,
+    CompletionStatus,
     HealthStatusResponse,
     LaTeXEngine,
     MarkdownToLaTeXRequest,
@@ -138,7 +138,7 @@ def setup_mcp_server(
         """
         if not cv_converter:
             return MarkdownToLaTeXResponse(
-                status=ConversionStatus.FAILED,
+                status=CompletionStatus.FAILED,
                 tex_url=None,
                 message="Server not initialized",
             )
@@ -156,7 +156,7 @@ def setup_mcp_server(
             logger.error(f"Error in markdown_to_latex: {e}")
 
             return MarkdownToLaTeXResponse(
-                status=ConversionStatus.FAILED,
+                status=CompletionStatus.FAILED,
                 tex_url=None,
                 message=f"Error processing markdown to LaTeX conversion request: {str(e)}",
             )
@@ -182,7 +182,7 @@ def setup_mcp_server(
         """
         if not latex_expert:
             return CompileLaTeXResponse(
-                status=ConversionStatus.FAILED,
+                status=CompletionStatus.FAILED,
                 pdf_url=None,
                 error_message="Server not initialized",
             )

@@ -9,7 +9,7 @@ from typer.testing import CliRunner
 from cv_writer_mcp.main import app
 from cv_writer_mcp.models import (
     CompileLaTeXResponse,
-    ConversionStatus,
+    CompletionStatus,
     ServerConfig,
 )
 
@@ -43,7 +43,7 @@ class TestCLICommands:
 
             # Mock the compilation response
             mock_response = CompileLaTeXResponse(
-                status=ConversionStatus.SUCCESS,
+                status=CompletionStatus.SUCCESS,
                 pdf_url="cv-writer://pdf/test.pdf",
                 metadata={"output_filename": "test.pdf", "engine": "pdflatex"},
             )
@@ -109,7 +109,7 @@ class TestCLICommands:
 
             # Mock the compilation response to return failure
             mock_response = CompileLaTeXResponse(
-                status=ConversionStatus.FAILED,
+                status=CompletionStatus.FAILED,
                 pdf_url=None,
                 error_message="Compilation failed: Missing package",
             )
@@ -138,7 +138,7 @@ class TestCLICommands:
 
             # Mock the compilation response
             mock_response = CompileLaTeXResponse(
-                status=ConversionStatus.SUCCESS,
+                status=CompletionStatus.SUCCESS,
                 pdf_url="cv-writer://pdf/custom.pdf",
                 metadata={"output_filename": "custom.pdf", "engine": "pdflatex"},
             )
@@ -169,7 +169,7 @@ class TestCLICommands:
 
             # Mock the compilation response
             mock_response = CompileLaTeXResponse(
-                status=ConversionStatus.SUCCESS,
+                status=CompletionStatus.SUCCESS,
                 pdf_url="cv-writer://pdf/test.pdf",
                 metadata={"output_filename": "test.pdf", "engine": "pdflatex"},
             )
@@ -199,7 +199,7 @@ class TestCLICommands:
 
             # Mock the compilation response
             mock_response = CompileLaTeXResponse(
-                status=ConversionStatus.SUCCESS,
+                status=CompletionStatus.SUCCESS,
                 pdf_url="cv-writer://pdf/test.pdf",
                 metadata={"output_filename": "test.pdf", "engine": "pdflatex"},
             )

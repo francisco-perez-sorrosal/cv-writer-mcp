@@ -15,7 +15,7 @@ from .models import (
     CompilationDiagnostics,
     CompileLaTeXRequest,
     CompileLaTeXResponse,
-    ConversionStatus,
+    CompletionStatus,
     OrchestrationResult,
     LaTeXEngine,
     ServerConfig,
@@ -152,9 +152,9 @@ class LaTeXExpert:
         """
         if not self.config:
             return CompileLaTeXResponse(
-                status=ConversionStatus.FAILED,
+                status=CompletionStatus.FAILED,
                 pdf_url=None,
-                error_message="Server configuration not provided to LaTeX compiler",
+                message="Server configuration not provided to LaTeX compiler",
             )
 
         try:
@@ -164,9 +164,9 @@ class LaTeXExpert:
             tex_path = self.config.output_dir / request.tex_filename
             if not tex_path.exists():
                 return CompileLaTeXResponse(
-                    status=ConversionStatus.FAILED,
+                    status=CompletionStatus.FAILED,
                     pdf_url=None,
-                    error_message=f"LaTeX file not found: {request.tex_filename}",
+                    message=f"LaTeX file not found: {request.tex_filename}",
                 )
 
             # Use the output filename from the request (already processed in model_post_init)
@@ -190,30 +190,28 @@ class LaTeXExpert:
                 "compilation_time": compilation_result.compilation_time,
             }
 
-            if not compilation_result.success:
+            if compilation_result.status != CompletionStatus.SUCCESS:
                 return CompileLaTeXResponse(
-                    status=ConversionStatus.FAILED,
+                    status=CompletionStatus.FAILED,
                     pdf_url=None,
-                    error_message=f"LaTeX compilation failed: {compilation_result.error_message}",
-                    metadata=metadata,
+                    message=f"LaTeX compilation failed: {compilation_result.message}",
                 )
 
             logger.info(f"LaTeX -> PDF conversion completed: {output_filename}")
 
             # Generate PDF resource URI
             return CompileLaTeXResponse(
-                status=ConversionStatus.SUCCESS,
+                status=CompletionStatus.SUCCESS,
                 pdf_url=f"cv-writer://pdf/{output_filename}",
-                error_message=None,
-                metadata=metadata,
+                message=f"Successfully compiled {request.tex_filename} to {output_filename}",
             )
 
         except Exception as e:
             logger.error(f"Unexpected error in LaTeX to PDF compilation: {e}")
             return CompileLaTeXResponse(
-                status=ConversionStatus.FAILED,
+                status=CompletionStatus.FAILED,
                 pdf_url=None,
-                error_message=f"Unexpected error: {str(e)}",
+                message=f"Unexpected error: {str(e)}",
             )
 
     def _create_file_reading_tool(self) -> Any:
@@ -232,18 +230,18 @@ class LaTeXExpert:
             try:
                 file_path_obj = Path(file_path)
                 file_content = read_text_file(file_path_obj, "file")
-                result = FileOperationResult.create_success_read(
+                result = FileOperationResult.success_read(
                     file_path, file_content, len(file_content.splitlines())
                 )
                 return result.to_json()
 
             except FileNotFoundError:
-                result = FileOperationResult.create_error_file_not_found(
+                result = FileOperationResult.error_file_not_found(
                     file_path, FileOperationType.READ
                 )
                 return result.to_json()
             except Exception as e:
-                result = FileOperationResult.create_error_tool_exception(
+                result = FileOperationResult.error_exception(
                     file_path, FileOperationType.READ, e
                 )
                 return result.to_json()
@@ -298,12 +296,12 @@ class LaTeXExpert:
                 )
 
                 # Success check - rely on agent's determination
-                if compilation_result.success:
+                if compilation_result.status == CompletionStatus.SUCCESS:
                     logger.info(f"Compilation successful (Attempt {attempt}")
 
                     # Create final successful result
                     final_result = OrchestrationResult(
-                        success=True,
+                        status=CompletionStatus.SUCCESS,
                         compilation_time=compilation_result.compilation_time,
                         log_output=compilation_result.log_output,
                         output_path=output_path,
@@ -352,7 +350,7 @@ class LaTeXExpert:
                                 )
                             )
 
-                            if fixing_output.success and corrected_file_path:
+                            if fixing_output.status == CompletionStatus.SUCCESS and corrected_file_path:
                                 logger.info(
                                     f"Error fixing completed: {fixing_output.total_fixes} fixes applied"
                                 )
@@ -383,8 +381,8 @@ class LaTeXExpert:
                         logger.error(f"{compilation_result}")
 
                         final_result = OrchestrationResult(
-                            success=False,
-                            error_message=f"Compilation failed after {max_attempts} attempts. Last error: {compilation_result.error_message}",
+                            status=CompletionStatus.FAILED,
+                            message=f"Compilation failed after {max_attempts} attempts. Last error: {compilation_result.message}",
                             compilation_time=compilation_result.compilation_time,
                             log_output=compilation_result.log_output,
                         )
@@ -394,8 +392,8 @@ class LaTeXExpert:
                 logger.error(f"Exception {type(e).__name__} details: {str(e)}")
 
                 final_result = OrchestrationResult(
-                    success=False,
-                    error_message=f"Compilation Failed after {attempt}/{max_attempts} attempts. Last exception: {str(e)}",
+                    status=CompletionStatus.FAILED,
+                    message=f"Compilation Failed after {attempt}/{max_attempts} attempts. Last exception: {str(e)}",
                     compilation_time=0.0,
                 )
 
@@ -403,8 +401,8 @@ class LaTeXExpert:
             # This shouldn't happen, but just in case
             logger.error("Orchestration failed - no result generated")
             final_result = OrchestrationResult(
-                success=False,
-                error_message="Orchestration failed - no result generated",
+                status=CompletionStatus.FAILED,
+                message="Orchestration failed - no result generated",
                 compilation_time=0.0,
             )
 

@@ -10,7 +10,7 @@ from cv_writer_mcp.latex_expert import LaTeXExpert
 from cv_writer_mcp.models import (
     CompileLaTeXRequest,
     CompileLaTeXResponse,
-    ConversionStatus,
+    CompletionStatus,
     LaTeXEngine,
     ServerConfig,
 )
@@ -56,7 +56,7 @@ class TestLaTeXCompiler:
             mock_agent.return_value = OrchestrationResult(
                 success=True,
                 compilation_time=1.5,
-                error_message=None,
+                message=None,
                 output_path=self.config.output_dir / "test.pdf",
             )
 
@@ -69,7 +69,7 @@ class TestLaTeXCompiler:
 
             response = await compiler.compile_latex_file(request)
 
-            assert response.status == ConversionStatus.SUCCESS
+            assert response.status == CompletionStatus.SUCCESS
             assert response.pdf_url == "cv-writer://pdf/test.pdf"
             assert response.metadata["tex_filename"] == "test.tex"
             assert response.metadata["output_filename"] == "test.pdf"
@@ -87,8 +87,8 @@ class TestLaTeXCompiler:
 
         response = await compiler.compile_latex_file(request)
 
-        assert response.status == ConversionStatus.FAILED
-        assert "LaTeX file not found" in response.error_message
+        assert response.status == CompletionStatus.FAILED
+        assert "LaTeX file not found" in response.message
 
     @pytest.mark.asyncio
     async def test_compile_latex_file_file_not_found(self):
@@ -101,8 +101,8 @@ class TestLaTeXCompiler:
 
         response = await compiler.compile_latex_file(request)
 
-        assert response.status == ConversionStatus.FAILED
-        assert "LaTeX file not found: nonexistent.tex" in response.error_message
+        assert response.status == CompletionStatus.FAILED
+        assert "LaTeX file not found: nonexistent.tex" in response.message
 
     @pytest.mark.asyncio
     async def test_compile_latex_file_compilation_failure(self):
@@ -116,9 +116,9 @@ class TestLaTeXCompiler:
 
         with patch.object(LaTeXExpert, "compile_latex_file") as mock_compile:
             mock_compile.return_value = CompileLaTeXResponse(
-                status=ConversionStatus.FAILED,
+                status=CompletionStatus.FAILED,
                 pdf_url=None,
-                error_message="LaTeX compilation failed",
+                message="LaTeX compilation failed",
             )
 
             compiler = LaTeXExpert(config=self.config)
@@ -129,8 +129,8 @@ class TestLaTeXCompiler:
 
             response = await compiler.compile_latex_file(request)
 
-            assert response.status == ConversionStatus.FAILED
-            assert "LaTeX compilation failed" in response.error_message
+            assert response.status == CompletionStatus.FAILED
+            assert "LaTeX compilation failed" in response.message
 
     @pytest.mark.asyncio
     async def test_compile_latex_file_exception(self):
@@ -153,8 +153,8 @@ class TestLaTeXCompiler:
 
             response = await compiler.compile_latex_file(request)
 
-            assert response.status == ConversionStatus.FAILED
-            assert "Unexpected error: Compilation error" in response.error_message
+            assert response.status == CompletionStatus.FAILED
+            assert "Unexpected error: Compilation error" in response.message
 
     def test_check_latex_installation_with_engine(self):
         """Test LaTeX installation check with specific engine."""
@@ -230,7 +230,7 @@ class TestLaTeXCompiler:
                 mock_agent.return_value = OrchestrationResult(
                     success=True,
                     compilation_time=1.0,
-                    error_message=None,
+                    message=None,
                     output_path=temp_path / "test.pdf",
                 )
 
@@ -240,7 +240,7 @@ class TestLaTeXCompiler:
                 mock_agent.assert_called_once()
 
                 # Verify response
-                assert response.status == ConversionStatus.SUCCESS
+                assert response.status == CompletionStatus.SUCCESS
                 assert response.pdf_url == "cv-writer://pdf/test.pdf"
 
     @pytest.mark.asyncio
@@ -269,7 +269,7 @@ class TestLaTeXCompiler:
                 mock_compile.return_value = OrchestrationResult(
                     success=True,
                     compilation_time=1.0,
-                    error_message=None,
+                    message=None,
                     output_path=temp_path / "test.pdf",
                 )
 
@@ -279,6 +279,6 @@ class TestLaTeXCompiler:
                 mock_compile.assert_called_once()
 
                 # Verify response
-                assert response.status == ConversionStatus.SUCCESS
+                assert response.status == CompletionStatus.SUCCESS
                 assert response.pdf_url == "cv-writer://pdf/test.pdf"
                 assert "agent_response" not in response.metadata

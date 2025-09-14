@@ -4,7 +4,7 @@ from loguru import logger
 
 from .md2latex_agent import MD2LaTeXAgent
 from .models import (
-    ConversionStatus,
+    CompletionStatus,
     MarkdownToLaTeXRequest,
     MarkdownToLaTeXResponse,
     ServerConfig,
@@ -45,7 +45,7 @@ class CVConverter:
         """
         if not self.md2latex_agent:
             return MarkdownToLaTeXResponse(
-                status=ConversionStatus.FAILED,
+                status=CompletionStatus.FAILED,
                 tex_url=None,
                 message="Markdown to LaTeX agent not initialized. Please check your API key.",
             )
@@ -57,7 +57,7 @@ class CVConverter:
         except Exception as e:
             logger.error(f"Unexpected error in markdown to LaTeX conversion: {e}")
             return MarkdownToLaTeXResponse(
-                status=ConversionStatus.FAILED,
+                status=CompletionStatus.FAILED,
                 tex_url=None,
                 message=f"Unexpected error: {str(e)}",
             )

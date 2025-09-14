@@ -7,7 +7,7 @@ from agents import Agent, Runner
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from .models import ConversionStatus, MarkdownToLaTeXRequest, MarkdownToLaTeXResponse, LaTeXOutput, get_output_type_class
+from .models import CompletionStatus, MarkdownToLaTeXRequest, MarkdownToLaTeXResponse, LaTeXOutput, get_output_type_class
 from .utils import load_agent_config, read_text_file
 
 
@@ -97,7 +97,7 @@ class MD2LaTeXAgent:
             # Validate the LaTeX content
             if not latex_output.latex_content or not latex_output.latex_content.strip():
                 return MarkdownToLaTeXResponse(
-                    status=ConversionStatus.FAILED,
+                    status=CompletionStatus.FAILED,
                     tex_url=None,
                     message=f"Agent response does not contain valid LaTeX content. Conversion notes: {latex_output.conversion_notes}",
                 )
@@ -117,7 +117,7 @@ class MD2LaTeXAgent:
             logger.info(f"Successfully converted markdown to LaTeX: {output_filename}")
 
             return MarkdownToLaTeXResponse(
-                status=ConversionStatus.SUCCESS,
+                status=CompletionStatus.SUCCESS,
                 tex_url=tex_url,
                 message=f"Successfully converted to {output_filename}. {latex_output.conversion_notes}",
             )

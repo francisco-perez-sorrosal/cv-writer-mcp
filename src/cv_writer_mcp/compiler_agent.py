@@ -16,6 +16,7 @@ from .models import (
     CompilationDiagnostics,
     OrchestrationResult,
     LaTeXEngine,
+    CompletionStatus,
     get_output_type_class,
 )
 from .tools import latex2pdf_tool
@@ -143,9 +144,9 @@ class CompilationAgent:
 
                 result_data = json.loads(json_str)
                 agent_output = CompilerAgentOutput(
-                    success=result_data.get("success", False),
+                    status=CompletionStatus.SUCCESS if result_data.get("success", False) else CompletionStatus.FAILED,
                     compilation_time=result_data.get("compilation_time", 0.0),
-                    error_message=result_data.get("error_message"),
+                    message=result_data.get("error_message"),
                     log_summary=result_data.get("log_summary", ""),
                     engine_used=result_data.get("engine_used", engine.value),
                     output_path=result_data.get("output_path", ""),
@@ -155,9 +156,9 @@ class CompilationAgent:
                 self._log_agent_diagnostics(
                     "JSON_PARSING_SUCCESS",
                     {
-                        "success": agent_output.success,
+                        "success": agent_output.status == CompletionStatus.SUCCESS,
                         "compilation_time": agent_output.compilation_time,
-                        "has_error_message": bool(agent_output.error_message),
+                        "has_message": bool(agent_output.message),
                         "log_summary_length": len(agent_output.log_summary or ""),
                     },
                 )
@@ -168,9 +169,9 @@ class CompilationAgent:
             self.diagnostics.increment("parsing_failures")
 
             agent_output = CompilerAgentOutput(
-                success=False,
+                status=CompletionStatus.FAILED,
                 compilation_time=0.0,
-                error_message="Failed to parse compilation result - no valid JSON found",
+                message="Failed to parse compilation result - no valid JSON found",
                 log_summary=output_text,
                 engine_used=engine.value,
                 output_path="",
@@ -197,9 +198,9 @@ class CompilationAgent:
             )
 
             agent_output = CompilerAgentOutput(
-                success=False,
+                status=CompletionStatus.FAILED,
                 compilation_time=0.0,
-                error_message=f"JSON parsing failed: {str(e)}",
+                message=f"JSON parsing failed: {str(e)}",
                 log_summary=(
                     str(compilation_result.final_output)
                     if hasattr(compilation_result, "final_output")
@@ -219,9 +220,9 @@ class CompilationAgent:
             )
 
             agent_output = CompilerAgentOutput(
-                success=False,
+                status=CompletionStatus.FAILED,
                 compilation_time=0.0,
-                error_message=f"Parsing exception: {str(e)}",
+                message=f"Parsing exception: {str(e)}",
                 log_summary=str(compilation_result),
                 engine_used=engine.value,
                 output_path="",
@@ -271,7 +272,7 @@ class CompilationAgent:
                 compilation_result, engine
             )
 
-            if agent_output.success:
+            if agent_output.status == CompletionStatus.SUCCESS:
                 self.diagnostics.increment("successful_compilations")
 
                 # Use the actual PDF path from the compilation result if available
@@ -280,18 +281,19 @@ class CompilationAgent:
                     actual_output_path = Path(agent_output.output_path)
 
                 return OrchestrationResult(
-                    success=True,
+                    status=CompletionStatus.SUCCESS,
                     compilation_time=agent_output.compilation_time,
                     log_output=agent_output.log_summary,
                     output_path=actual_output_path,
+                    message=agent_output.message,
                 )
             else:
                 # Track failed compilation
                 self.diagnostics.increment("failed_compilations")
 
                 return OrchestrationResult(
-                    success=False,
-                    error_message=agent_output.error_message,
+                    status=CompletionStatus.FAILED,
+                    message=agent_output.message,
                     compilation_time=agent_output.compilation_time,
                     log_output=agent_output.log_summary,
                 )
@@ -300,7 +302,7 @@ class CompilationAgent:
             self.diagnostics.increment("failed_compilations")
             logger.error(f"Compilation failed with exception: {e}")
             return OrchestrationResult(
-                success=False,
-                error_message=f"Compilation failed with exception: {str(e)}",
+                status=CompletionStatus.FAILED,
+                message=f"Compilation failed with exception: {str(e)}",
                 compilation_time=0.0,
             )

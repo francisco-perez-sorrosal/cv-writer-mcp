@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from cv_writer_mcp.models import (
     CompileLaTeXRequest,
     CompileLaTeXResponse,
-    ConversionStatus,
+    CompletionStatus,
     HealthStatusResponse,
     LaTeXEngine,
     MarkdownToLaTeXRequest,
@@ -58,22 +58,22 @@ class TestMarkdownToLaTeXResponse:
     def test_success_response(self):
         """Test successful response creation."""
         response = MarkdownToLaTeXResponse(
-            status=ConversionStatus.SUCCESS,
+            status=CompletionStatus.SUCCESS,
             tex_url="cv-writer://tex/test.tex",
         )
 
-        assert response.status == ConversionStatus.SUCCESS
+        assert response.status == CompletionStatus.SUCCESS
         assert response.tex_url == "cv-writer://tex/test.tex"
         assert response.message is None
 
     def test_failed_response(self):
         """Test failed response creation."""
         response = MarkdownToLaTeXResponse(
-            status=ConversionStatus.FAILED,
+            status=CompletionStatus.FAILED,
             message="Conversion failed",
         )
 
-        assert response.status == ConversionStatus.FAILED
+        assert response.status == CompletionStatus.FAILED
         assert response.tex_url is None
         assert response.message == "Conversion failed"
 
@@ -127,44 +127,34 @@ class TestCompileLaTeXResponse:
     def test_success_response(self):
         """Test successful response creation."""
         response = CompileLaTeXResponse(
-            status=ConversionStatus.SUCCESS,
+            status=CompletionStatus.SUCCESS,
             pdf_url="cv-writer://pdf/test.pdf",
-            metadata={
-                "tex_filename": "test.tex",
-                "output_filename": "test.pdf",
-                "latex_engine": "pdflatex",
-                "compilation_time": 1.5,
-            },
+            message="Successfully compiled test.tex to test.pdf",
         )
 
-        assert response.status == ConversionStatus.SUCCESS
+        assert response.status == CompletionStatus.SUCCESS
         assert response.pdf_url == "cv-writer://pdf/test.pdf"
-        assert response.error_message is None
-        assert response.metadata["tex_filename"] == "test.tex"
-        assert response.metadata["output_filename"] == "test.pdf"
-        assert response.metadata["latex_engine"] == "pdflatex"
-        assert response.metadata["compilation_time"] == 1.5
+        assert response.message == "Successfully compiled test.tex to test.pdf"
 
     def test_failed_response(self):
         """Test failed response creation."""
         response = CompileLaTeXResponse(
-            status=ConversionStatus.FAILED,
-            error_message="Compilation failed",
+            status=CompletionStatus.FAILED,
+            message="Compilation failed",
         )
 
-        assert response.status == ConversionStatus.FAILED
+        assert response.status == CompletionStatus.FAILED
         assert response.pdf_url is None
-        assert response.error_message == "Compilation failed"
-        assert response.metadata == {}
+        assert response.message == "Compilation failed"
 
 
-class TestConversionStatus:
-    """Test cases for ConversionStatus enum."""
+class TestCompletionStatus:
+    """Test cases for CompletionStatus enum."""
 
     def test_status_values(self):
         """Test that status values are correct."""
-        assert ConversionStatus.SUCCESS == "success"
-        assert ConversionStatus.FAILED == "failed"
+        assert CompletionStatus.SUCCESS == "success"
+        assert CompletionStatus.FAILED == "failed"
 
 
 class TestLaTeXEngine:
