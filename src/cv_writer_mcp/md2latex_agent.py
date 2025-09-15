@@ -7,7 +7,14 @@ from agents import Agent, Runner
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from .models import CompletionStatus, MarkdownToLaTeXRequest, MarkdownToLaTeXResponse, LaTeXOutput, get_output_type_class
+from .models import (
+    CompletionStatus,
+    MarkdownToLaTeXRequest,
+    MarkdownToLaTeXResponse,
+    LaTeXOutput,
+    ServerConfig,
+    get_output_type_class,
+)
 from .utils import load_agent_config, read_text_file
 
 
@@ -125,7 +132,7 @@ class MD2LaTeXAgent:
         except Exception as e:
             logger.error(f"Error in markdown to LaTeX conversion: {e}")
             return MarkdownToLaTeXResponse(
-                status=ConversionStatus.FAILED,
+                status=CompletionStatus.FAILED,
                 tex_url=None,
                 message=f"Conversion failed: {str(e)}",
             )

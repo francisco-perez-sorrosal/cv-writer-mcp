@@ -7,8 +7,5 @@ __author__ = "Francisco Perez-Sorrosal"
 __email__ = "fperezsorrosal@gmail.com"
 
 __all__ = [
-    "CVWriterFastMCP",
-    "CVConverter",
-    "LaTeXCompiler",
     "MD2LaTeXAgent",
 ]

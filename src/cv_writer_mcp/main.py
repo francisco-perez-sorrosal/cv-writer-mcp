@@ -16,7 +16,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from .cv_converter import CVConverter
+from .md2latex_agent import MD2LaTeXAgent
 from .latex_expert import LaTeXExpert
 from .utils import read_text_file
 from .logger import LogConfig, LogLevel, configure_logger
@@ -36,7 +36,7 @@ load_dotenv()
 
 # Global variables for MCP server
 mcp: FastMCP | None = None
-cv_converter: CVConverter | None = None
+cv_converter: MD2LaTeXAgent | None = None
 latex_expert: LaTeXExpert | None = None
 config: ServerConfig | None = None
 
@@ -118,7 +118,7 @@ def setup_mcp_server(
     global mcp, cv_converter, latex_expert, config
 
     config = server_config
-    cv_converter = CVConverter(config)
+    cv_converter = MD2LaTeXAgent(api_key=config.openai_api_key)
     latex_expert = LaTeXExpert(config)
     mcp = FastMCP("cv-writer-mcp", host=host, port=port)
 
@@ -150,7 +150,7 @@ def setup_mcp_server(
             )
 
             # Convert markdown to LaTeX
-            return await cv_converter.convert_markdown_to_latex(request)            
+            return await cv_converter.convert(request)            
 
         except Exception as e:
             logger.error(f"Error in markdown_to_latex: {e}")
@@ -184,7 +184,7 @@ def setup_mcp_server(
             return CompileLaTeXResponse(
                 status=CompletionStatus.FAILED,
                 pdf_url=None,
-                error_message="Server not initialized",
+                message="Server not initialized",
             )
 
         # Create request object
@@ -426,10 +426,10 @@ def compile_latex(
         if response.status.value == "success":
             console.print("[green]✅ Successfully compiled LaTeX to PDF[/green]")
             console.print(f"[blue]📄 PDF URL: {response.pdf_url}[/blue]")
-            if response.metadata:
-                console.print(f"[blue]📊 Metadata: {response.metadata}[/blue]")
+            if response.message:
+                console.print(f"[blue]📊 Metadata: {response.message}[/blue]")
         else:
-            console.print(f"[red]❌ Compilation failed: {response.error_message}[/red]")
+            console.print(f"[red]❌ Compilation failed: {response.message}[/red]")
             raise typer.Exit(1)
 
     except Exception as e:
