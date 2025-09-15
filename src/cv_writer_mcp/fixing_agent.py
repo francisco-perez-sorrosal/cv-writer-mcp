@@ -15,6 +15,7 @@ from .models import (
     CompilationDiagnostics,
     ErrorFixingAgentOutput,
     ServerConfig,
+    CompletionStatus,
     get_output_type_class,
 )
 from .utils import create_timestamped_version, load_agent_config, read_text_file
@@ -36,7 +37,7 @@ class ErrorFixingAgent:
         """
         self.diagnostics = diagnostics or CompilationDiagnostics()
         self.server_config = server_config
-        self.agent_config = load_agent_config("error_fixing_agent.yaml")
+        self.agent_config = load_agent_config("fixing_agent.yaml")
 
     def _log_agent_diagnostics(self, stage: str, data: dict[str, Any]) -> None:
         """Enhanced diagnostic logging for agent communication and parsing."""
@@ -527,7 +528,7 @@ class ErrorFixingAgent:
                     "ERROR_FIXING_CONTENT_VALIDATION", content_validation
                 )
 
-                if fixing_output.success and fixing_output.corrected_content:
+                if fixing_output.status == CompletionStatus.SUCCESS and fixing_output.corrected_content:
                     self.diagnostics.increment("successful_fixes")
 
                 return fixing_output
@@ -564,12 +565,12 @@ class ErrorFixingAgent:
 
             # Return a failed ErrorFixingAgentOutput
             return ErrorFixingAgentOutput(
-                success=False,
+                status=CompletionStatus.FAILED,
                 corrected_content="",
                 total_fixes=0,
                 fixes_applied=[],
                 file_modified=False,
-                explanation=f"Failed to parse error fixing agent output: {str(e)}",
+                message=f"Failed to parse error fixing agent output: {str(e)}",
             )
 
     async def fix_errors(
@@ -599,12 +600,12 @@ class ErrorFixingAgent:
             logger.error(f"Failed to read LaTeX file content: {e}")
             return (
                 ErrorFixingAgentOutput(
-                    success=False,
+                    status=CompletionStatus.FAILED,
                     corrected_content="",
                     total_fixes=0,
                     fixes_applied=[],
                     file_modified=False,
-                    explanation=f"Failed to read LaTeX file: {str(e)}",
+                    message=f"Failed to read LaTeX file: {str(e)}",
                 ),
                 None,
             )
@@ -626,7 +627,7 @@ class ErrorFixingAgent:
             # Parse the agent output
             fixing_output = self.parse_error_fixing_agent_output(error_fixing_result)
 
-            if fixing_output.success and fixing_output.corrected_content:
+            if fixing_output.status == CompletionStatus.SUCCESS and fixing_output.corrected_content:
                 logger.info(
                     f"Error fixing completed: {fixing_output.total_fixes} fixes applied"
                 )
@@ -654,12 +655,12 @@ class ErrorFixingAgent:
             logger.error(f"Error fixing failed: {e}")
             return (
                 ErrorFixingAgentOutput(
-                    success=False,
+                    status=CompletionStatus.FAILED,
                     corrected_content="",
                     total_fixes=0,
                     fixes_applied=[],
                     file_modified=False,
-                    explanation=f"Error fixing failed: {str(e)}",
+                    message=f"Error fixing failed: {str(e)}",
                 ),
                 None,
             )
