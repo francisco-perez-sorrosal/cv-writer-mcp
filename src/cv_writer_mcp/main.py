@@ -18,6 +18,7 @@ from rich.text import Text
 
 from .md2latex_agent import MD2LaTeXAgent
 from .latex_expert import LaTeXExpert
+from .pdf_style_coordinator import PDFStyleCoordinator
 from .utils import read_text_file
 from .logger import LogConfig, LogLevel, configure_logger
 from .models import (
@@ -28,6 +29,8 @@ from .models import (
     LaTeXEngine,
     MarkdownToLaTeXRequest,
     MarkdownToLaTeXResponse,
+    PDFAnalysisRequest,
+    PDFAnalysisResponse,
     ServerConfig,
 )
 
@@ -435,6 +438,112 @@ def compile_latex(
     except Exception as e:
         console.print(f"[red]❌ Error during compilation: {str(e)}[/red]")
         raise typer.Exit(1) from e
+
+
+@app.command()
+def fix_style(
+    pdf_file: str = typer.Option(
+        "./output/to_improve_style.pdf", 
+        "--pdf", "-p", 
+        help="Path to the PDF file to analyze"
+    ),
+    tex_file: str = typer.Option(
+        "./output/to_improve_style.tex", 
+        "--tex", "-t", 
+        help="Path to the LaTeX source file"
+    ),
+    output_file: str = typer.Option(
+        "improved.tex", 
+        "--output", "-o", 
+        help="Output filename for improved LaTeX file"
+    ),
+    debug: bool = typer.Option(False, "--debug", help="Run in debug mode"),
+) -> None:
+    """Analyze PDF layout and improve LaTeX formatting using AI agent with browser automation."""
+
+    # Create and configure server configuration
+    config = create_config(debug)
+
+    # Configure logging
+    setup_logging(config.log_level)
+
+    console.print(f"[blue]🔍 Analyzing PDF layout: {pdf_file}[/blue]")
+    console.print(f"[blue]📝 Source LaTeX: {tex_file}[/blue]")
+
+    # Check if input files exist
+    pdf_path = Path(pdf_file)
+    tex_path = Path(tex_file)
+    
+    if not pdf_path.exists():
+        console.print(f"[red]❌ Error: PDF file not found at '{pdf_file}'[/red]")
+        raise typer.Exit(1)
+    
+    if not tex_path.exists():
+        console.print(f"[red]❌ Error: LaTeX file not found at '{tex_file}'[/red]")
+        raise typer.Exit(1)
+
+    # Check for OpenAI API key
+    if not os.getenv("OPENAI_API_KEY"):
+        console.print("[red]❌ Error: OPENAI_API_KEY environment variable is required[/red]")
+        console.print("[yellow]Set it with: export OPENAI_API_KEY='your-api-key-here'[/yellow]")
+        raise typer.Exit(1)
+
+    console.print("[green]✅ Input files verified[/green]")
+    console.print("[green]✅ OpenAI API key found[/green]")
+
+    # Show analysis method
+    console.print("[blue]🤖 Using specialized AI agents for PDF analysis and LaTeX improvement[/blue]")
+    console.print("[yellow]📱 A browser window will open to display the PDF for analysis[/yellow]")
+
+    # Run the analysis
+    try:
+        # Handle asyncio loop for CLI context
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        # Initialize the PDF style coordinator
+        coordinator = PDFStyleCoordinator()
+        console.print("[green]✅ PDF Style Coordinator initialized[/green]")
+
+        # Create analysis request
+        request = PDFAnalysisRequest(
+            pdf_file_path=str(pdf_path.absolute()),
+            tex_file_path=str(tex_path.absolute()),
+            output_filename=output_file
+        )
+
+        console.print("[blue]🔍 Starting PDF analysis and LaTeX improvement...[/blue]")
+        
+        # Run the analysis
+        response = loop.run_until_complete(coordinator.analyze_and_improve(request))
+
+        if response.status.value == "success":
+            console.print("[green]✅ Analysis completed successfully![/green]")
+            console.print(f"[blue]📋 Status: {response.message}[/blue]")
+            console.print(f"[blue]🔗 Improved LaTeX file: {response.improved_tex_url}[/blue]")
+            console.print("\n[green]📊 The coordinator has:[/green]")
+            console.print("   • Captured and analyzed PDF pages visually")
+            console.print("   • Identified specific visual formatting issues")
+            console.print("   • Implemented targeted LaTeX improvements")
+            console.print("   • Generated an improved version of your CV")
+            console.print("\n[blue]💡 You can now compile the improved LaTeX file to see the visual enhancements![/blue]")
+        else:
+            console.print(f"[red]❌ Analysis failed: {response.message}[/red]")
+            raise typer.Exit(1)
+
+    except Exception as e:
+        console.print(f"[red]❌ Error during analysis: {e}[/red]")
+        console.print("\n[yellow]🔧 Troubleshooting tips:[/yellow]")
+        console.print("   • Ensure Playwright is installed: pixi add playwright")
+        console.print("   • Install browser binaries: pixi run playwright install")
+        console.print("   • Check that your PDF and LaTeX files exist and are accessible")
+        console.print("   • Verify your OpenAI API key is valid")
+        raise typer.Exit(1) from e
+
+
 
 
 if __name__ == "__main__":

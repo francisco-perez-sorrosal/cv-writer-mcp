@@ -17,13 +17,13 @@ export TRANSPORT="stdio"  # or "streamable-http" for HTTP transport
 ### Running the Server
 ```bash
 # Start MCP server (default: stdio transport)
-pixi run start
+pixi run start_mcps
 
 # Start in development mode
 pixi run dev
 
 # Start with HTTP transport
-TRANSPORT="streamable-http" pixi run start
+TRANSPORT="streamable-http" pixi run start_mcps
 ```
 
 ### Development Tasks
@@ -37,6 +37,7 @@ pixi run test-cov
 # Code formatting and linting
 pixi run format    # Format with black
 pixi run lint      # Lint with ruff
+pixi run lint-fix  # Lint with automatic fixes
 pixi run type-check # Type check with mypy
 
 # Run all CI checks
@@ -49,7 +50,10 @@ pixi run ci
 pixi run check-latex
 
 # Compile LaTeX file (CLI)
-pixi run python -m cv_writer_mcp compile-latex output/file.tex --output result.pdf
+pixi run compile-latex
+
+# Fix PDF style issues
+pixi run fix-style
 ```
 
 ## Architecture Overview
@@ -60,25 +64,34 @@ This is a **Model Context Protocol (MCP) server** built with **FastMCP framework
 
 - **`main.py`**: FastMCP server setup, MCP tools definitions, and CLI entry point
 - **`md2latex_agent.py`**: OpenAI Agents SDK integration for intelligent markdown→LaTeX conversion
-- **`latex_compiler.py`**: LaTeX compilation engine with support for multiple engines (pdflatex, xelatex, lualatex)  
-- **`cv_converter.py`**: Main conversion orchestration logic
+- **`compiler_agent.py`**: LaTeX compilation engine with AI-powered error fixing
+- **`latex_expert.py`**: LaTeX expertise and template management
+- **`pdf_style_coordinator.py`**: PDF style analysis and coordination
+- **`fixing_agent.py`**: Intelligent error fixing for LaTeX compilation issues
+- **`page_capture_agent.py`**: Web page capture and analysis functionality
+- **`latex_fix_agent.py`**: Specialized LaTeX error fixing agent
 - **`models.py`**: Pydantic models for type-safe data handling
+- **`tools.py`**: MCP tools implementation
+- **`utils.py`**: Utility functions
 - **`logger.py`**: Centralized logging configuration
 
 ### MCP Tools Provided
 
 1. **`markdown_to_latex`**: AI-powered markdown to LaTeX conversion using OpenAI agents
-2. **`compile_latex_to_pdf`**: LaTeX compilation with multiple engine support
-3. **`check_latex_installation`**: LaTeX environment verification
-4. **`health_check`**: Server health monitoring
+2. **`compile_latex_to_pdf`**: LaTeX compilation with AI-powered error fixing
+3. **`analyze_pdf_style`**: PDF style analysis and improvement suggestions
+4. **`check_latex_installation`**: LaTeX environment verification
+5. **`health_check`**: Server health monitoring
 
 ### Key Architecture Patterns
 
 - **FastMCP Framework**: Unified MCP server and HTTP API in single codebase
-- **OpenAI Agents SDK**: Uses agents for intelligent markdown interpretation and LaTeX generation
+- **OpenAI Agents SDK**: Uses multiple specialized agents for different tasks (conversion, compilation, fixing, analysis)
+- **Agent-Based Architecture**: Specialized agents handle specific tasks (MD2LaTeX, LaTeX Expert, PDF Style Coordinator, Fixing Agent)
 - **Transport Flexibility**: Supports both stdio (Claude Desktop) and HTTP transports
 - **Pydantic Models**: Type-safe data validation throughout the pipeline
 - **Async/Await**: Asynchronous processing for better performance
+- **Multi-Stage Processing**: Markdown → LaTeX → PDF with intelligent error fixing at each stage
 
 ### Directory Structure
 - `src/cv_writer_mcp/`: Main source code
