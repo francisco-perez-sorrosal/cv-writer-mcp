@@ -367,6 +367,77 @@ def check_latex() -> None:
 
 
 @app.command()
+def convert_markdown(
+    markdown_file: str = typer.Argument(..., help="Path to the markdown file to convert"),
+    output_file: str = typer.Option("", "--output", "-o", help="Custom output filename for .tex file"),
+    debug: bool = typer.Option(False, "--debug", help="Run in debug mode"),
+) -> None:
+    """Convert a markdown CV file to LaTeX from the command line."""
+
+    # Create and configure server configuration
+    config = create_config(debug)
+
+    # Configure logging
+    setup_logging(config.log_level)
+
+    console.print(f"[blue]Converting markdown file: {markdown_file}[/blue]")
+
+    # Check if the input file exists
+    md_path = Path(markdown_file)
+    if not md_path.exists():
+        console.print(f"[red]❌ Error: Markdown file not found at '{markdown_file}'[/red]")
+        raise typer.Exit(1)
+
+    # Check for OpenAI API key
+    if not config.openai_api_key:
+        console.print("[red]❌ Error: OPENAI_API_KEY environment variable is required[/red]")
+        console.print("[yellow]Set it with: export OPENAI_API_KEY='your-api-key-here'[/yellow]")
+        raise typer.Exit(1)
+
+    console.print("[green]✅ Input file verified[/green]")
+    console.print("[green]✅ OpenAI API key found[/green]")
+
+    # Create converter
+    cv_converter = MD2LaTeXAgent(api_key=config.openai_api_key)
+
+    # Show conversion method
+    console.print("[blue]🤖 Using OpenAI agents for markdown to LaTeX conversion[/blue]")
+
+    # Convert the markdown file
+    try:
+        # Read markdown content
+        markdown_content = md_path.read_text()
+
+        # Handle asyncio loop for CLI context
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        # Create request object
+        request = MarkdownToLaTeXRequest(
+            markdown_content=markdown_content,
+            output_filename=output_file or "",
+        )
+
+        response = loop.run_until_complete(cv_converter.convert(request))
+
+        if response.status.value == "success":
+            console.print("[green]✅ Successfully converted markdown to LaTeX[/green]")
+            console.print(f"[blue]📄 LaTeX URL: {response.tex_url}[/blue]")
+            if response.message:
+                console.print(f"[blue]📊 Details: {response.message}[/blue]")
+        else:
+            console.print(f"[red]❌ Conversion failed: {response.message}[/red]")
+            raise typer.Exit(1)
+
+    except Exception as e:
+        console.print(f"[red]❌ Error during conversion: {str(e)}[/red]")
+        raise typer.Exit(1) from e
+
+
+@app.command()
 def compile_latex(
     tex_file: str = typer.Argument(..., help="Path to the .tex file to compile"),
     output_file: str = typer.Option("", "--output", "-o", help="Custom output filename for PDF"),

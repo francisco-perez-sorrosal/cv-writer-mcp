@@ -200,6 +200,12 @@ pixi run start_mcps --debug
 # Check LaTeX installation
 pixi run check-latex
 
+# Convert markdown CV to LaTeX
+pixi run convert-markdown input/cv.md
+
+# Convert with custom output filename
+pixi run convert-markdown input/cv.md --output my_cv.tex
+
 # Compile a LaTeX file to PDF using intelligent agents
 pixi run compile-latex output/test.tex
 
@@ -316,10 +322,13 @@ The MCP tools can be used by AI assistants like Claude Desktop:
 
 ```bash
 # Start the MCP server
-pixi run start
+pixi run start_mcps
 
 # Start server in development mode
-pixi run start --debug
+pixi run start_mcps --debug
+
+# Convert markdown to LaTeX
+pixi run convert-markdown input/cv.md --output my_cv.tex
 
 # Basic LaTeX compilation
 pixi run compile-latex output/simple_test.tex
