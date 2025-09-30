@@ -17,8 +17,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "openai>=1.0.0", 
     "openai-agents>=0.3.0",
-    "pyyaml>=6.0.0",
-    "playwright>=1.55.0",
+    "pyyaml>=6.0.0", "playwright>=1.55.0,<2",
 ]
 
 
@@ -43,12 +42,15 @@ cv-writer-mcp = { path = ".", editable = true }
 
 [tool.pixi.tasks]
 install = "pip install -e ."
-start_mcps = "python -m cv_writer_mcp start_mcps"
+start-mcps = "python -m cv_writer_mcp start-mcps"
 dev = "python -m cv_writer_mcp start --dev"
 check-latex = "python -m cv_writer_mcp check-latex"
+compile-schwab = "python -m cv_writer_mcp compile-latex --debug output/cv_schwab.tex --output cv_schwab.pdf"
 compile-latex = "python -m cv_writer_mcp compile-latex --debug output/kk.tex --output kk.pdf"
 compile-latex2 = "python -m cv_writer_mcp compile-latex --debug output/improved.tex --output improved_fixed.pdf"
 fix-style = "python -m cv_writer_mcp fix-style --debug"
+fix-style-schwab = "python -m cv_writer_mcp fix-style -p output/cv_schwab.pdf -t output/cv_schwab.tex -o cv_schwab_fixed.tex --debug"
+compile-styled-schwab = "python -m cv_writer_mcp compile-latex --debug output/cv_schwab_fixed.tex --output cv_schwab_styled.pdf"
 test = "pytest tests/ -v"
 test-cov = "pytest --cov=src --cov-report=html tests/"
 lint = "ruff check src/ tests/"

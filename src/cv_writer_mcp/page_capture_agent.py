@@ -8,7 +8,7 @@ from loguru import logger
 from agents import Agent, Runner
 
 from .models import CompletionStatus, PageCaptureRequest, PageCaptureResponse
-from .tools import capture_pdf_pages_tool
+from .tools import pdf_computer_use_tool
 from .utils import load_agent_config
 
 
@@ -34,7 +34,7 @@ class PageCaptureAgent:
         return Agent(
             name=self.agent_config["agent_metadata"]["name"],
             instructions=self.agent_config["instructions"],
-            tools=[capture_pdf_pages_tool],
+            tools=[pdf_computer_use_tool],
             model=self.model,
             output_type=output_type_class,
         )
