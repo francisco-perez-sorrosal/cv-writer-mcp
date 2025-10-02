@@ -97,30 +97,58 @@ def read_text_file(
 
 
 def load_agent_config(config_file: str) -> Dict[str, Any]:
-    """Load agent configuration from a YAML file.
+    """Load agent configuration from a YAML file with multi-path search.
+
+    Searches for configuration files in the following order:
+    1. src/cv_writer_mcp/{config_file}  (root level - for non-refactored agents)
+    2. src/cv_writer_mcp/compilation/configs/{config_file}  (compilation package)
+    3. Future: other package configs/ directories
+
+    This pragmatic approach ensures:
+    - Backward compatibility with non-refactored agents
+    - Support for new package-based structure
+    - Easy extension for future packages
 
     Args:
-        config_file_path: Path to the YAML configuration file
+        config_file: Name of the YAML configuration file (e.g., "compiler_agent.yaml")
 
     Returns:
         Dictionary containing the agent configuration
 
     Raises:
-        Exception: If the configuration file doesn't exist or if the
-        if the YAML file is malformed
+        FileNotFoundError: If the configuration file doesn't exist in any location
+        Exception: If the YAML file is malformed
     """
-    
-    config_file_path = Path(__file__).parent / Path(config_file)
+    base_dir = Path(__file__).parent
 
-    if not config_file_path.exists():
-        raise FileNotFoundError(f"Configuration file not found: {config_file_path}")
+    # Define search paths in priority order
+    search_paths = [
+        base_dir / config_file,  # Root level (current location for non-refactored agents)
+        base_dir / "compilation" / "configs" / config_file,  # Compilation package
+        # Future: Add other package paths here as needed
+        # base_dir / "conversion" / "configs" / config_file,
+        # base_dir / "analysis" / "configs" / config_file,
+    ]
+
+    # Find the first existing config file
+    config_file_path = None
+    for path in search_paths:
+        if path.exists():
+            config_file_path = path
+            break
+
+    if not config_file_path:
+        searched_locations = "\n  - ".join(str(p) for p in search_paths)
+        raise FileNotFoundError(
+            f"Configuration file '{config_file}' not found in any of these locations:\n  - {searched_locations}"
+        )
 
     try:
         with open(config_file_path, encoding="utf-8") as f:
             config = yaml.safe_load(f)
-        
+
         logger.info(f"Loaded agent configuration from: {config_file_path}")
         return config
     except Exception as e:
-        logger.error(f"Error loadding YAML configuration file {config_file_path}: {e}")
+        logger.error(f"Error loading YAML configuration file {config_file_path}: {e}")
         raise

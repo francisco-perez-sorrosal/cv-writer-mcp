@@ -6,7 +6,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from .latex_fix_agent import LaTeXFixAgent
+from .formatting_agent import FormattingAgent
 from .models import CompletionStatus, PDFAnalysisRequest, PDFAnalysisResponse
 from .page_capture_agent import PageCaptureAgent, PageCaptureRequest
 from .utils import read_text_file
@@ -24,14 +24,14 @@ class PDFStyleCoordinator:
         
         # Initialize both agents
         self.page_capture_agent = PageCaptureAgent(api_key=self.api_key, model=self.model)
-        self.latex_fix_agent = LaTeXFixAgent(api_key=self.api_key, model=self.model)
+        self.formatting_agent = FormattingAgent(api_key=self.api_key, model=self.model)
 
     async def analyze_and_improve(self, request: PDFAnalysisRequest) -> PDFAnalysisResponse:
         """Analyze PDF and improve LaTeX using two specialized agents.
         
         This coordinator:
         1. Uses PageCaptureAgent to capture pages and analyze visual issues
-        2. Uses LaTeXFixAgent to implement the suggested fixes
+        2. Uses FormattingAgent to implement the suggested fixes
         
         Args:
             request: PDF analysis request with file paths
@@ -91,7 +91,7 @@ class PDFStyleCoordinator:
             {chr(10).join(f"- {issue}" for issue in capture_response.visual_issues)}
             """
             
-            fix_output = await self.latex_fix_agent.implement_fixes(
+            fix_output = await self.formatting_agent.implement_fixes(
                 latex_content=latex_content,
                 visual_analysis_results=visual_analysis_summary,
                 suggested_fixes=capture_response.suggested_fixes

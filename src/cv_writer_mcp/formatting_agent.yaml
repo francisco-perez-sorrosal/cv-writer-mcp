@@ -1,8 +1,8 @@
 agent_metadata:
-  name: "LaTeXFixAgent"
-  description: "Implements LaTeX fixes based on visual analysis results"
+  name: "FormattingAgent"
+  description: "Implements LaTeX formatting improvements based on visual analysis results"
   model: "gpt-5-mini"
-  output_type: "LaTeXFixOutput"
+  output_type: "FormattingOutput"
 
 instructions: |
   You are a LaTeX/moderncv specialist. Implement the suggested LaTeX fixes while preserving all text content.

@@ -1,6 +1,6 @@
-"""LaTeX error fixing agent functionality.
+"""Compilation error agent functionality.
 
-This module contains the error fixing agent and related utilities for analyzing
+This module contains the compilation error agent and related utilities for analyzing
 and fixing LaTeX compilation errors using AI agents.
 """
 
@@ -11,18 +11,18 @@ from typing import Any
 from agents import Agent, Runner
 from loguru import logger
 
-from .models import (
+from ..models import (
     CompilationDiagnostics,
-    ErrorFixingAgentOutput,
+    CompilationErrorOutput,
     ServerConfig,
     CompletionStatus,
     get_output_type_class,
 )
-from .utils import create_timestamped_version, load_agent_config, read_text_file
+from ..utils import create_timestamped_version, load_agent_config, read_text_file
 
 
-class ErrorFixingAgent:
-    """Handles LaTeX error fixing using AI agents."""
+class CompilationErrorAgent:
+    """Handles LaTeX compilation error fixing using AI agents."""
 
     def __init__(
         self,
@@ -37,7 +37,7 @@ class ErrorFixingAgent:
         """
         self.diagnostics = diagnostics or CompilationDiagnostics()
         self.server_config = server_config
-        self.agent_config = load_agent_config("fixing_agent.yaml")
+        self.agent_config = load_agent_config("error_agent.yaml")
 
     def _log_agent_diagnostics(self, stage: str, data: dict[str, Any]) -> None:
         """Enhanced diagnostic logging for agent communication and parsing."""
@@ -471,7 +471,7 @@ class ErrorFixingAgent:
         
         return error_fixing_prompt
 
-    def create_error_fixing_agent(self) -> Agent:
+    def create_error_agent(self) -> Agent:
         """Create an agent specialized in fixing LaTeX compilation errors.
 
         This agent analyzes LaTeX compilation logs and fixes common errors
@@ -503,10 +503,10 @@ class ErrorFixingAgent:
             output_type=output_type_class,
         )
 
-    def parse_error_fixing_agent_output(
+    def parse_error_agent_output(
         self, error_fixing_result: Any
-    ) -> ErrorFixingAgentOutput:
-        """Enhanced parsing of error fixing agent output with detailed diagnostics."""
+    ) -> CompilationErrorOutput:
+        """Enhanced parsing of compilation error agent output with detailed diagnostics."""
         self.diagnostics.increment("error_fixing_attempts")
 
         # Validate the response structure first
@@ -515,10 +515,10 @@ class ErrorFixingAgent:
         try:
             # Check if we have a properly structured response
             if validation["has_final_output"] and isinstance(
-                error_fixing_result.final_output, ErrorFixingAgentOutput
+                error_fixing_result.final_output, CompilationErrorOutput
             ):
                 fixing_output = error_fixing_result.final_output
-                logger.info("✅ Successfully parsed ErrorFixingAgentOutput directly")
+                logger.info("✅ Successfully parsed CompilationErrorOutput directly")
 
                 # Validate the content
                 content_validation = self._validate_corrected_content(
@@ -563,8 +563,8 @@ class ErrorFixingAgent:
                 {"error_type": type(e).__name__, "error": str(e)},
             )
 
-            # Return a failed ErrorFixingAgentOutput
-            return ErrorFixingAgentOutput(
+            # Return a failed CompilationErrorOutput
+            return CompilationErrorOutput(
                 status=CompletionStatus.FAILED,
                 corrected_content="",
                 total_fixes=0,
@@ -578,7 +578,7 @@ class ErrorFixingAgent:
         tex_file_path: Path,
         error_context: dict[str, Any],
         log_content: str,
-    ) -> tuple[ErrorFixingAgentOutput, Path | None]:
+    ) -> tuple[CompilationErrorOutput, Path | None]:
         """Fix LaTeX errors using the error fixing agent.
 
         Args:
@@ -589,9 +589,9 @@ class ErrorFixingAgent:
         Returns:
             Tuple of (fixing result, path to corrected file if successful)
         """
-        logger.info("Starting LaTeX error fixing with error fixing agent")
+        logger.info("Starting LaTeX error fixing with compilation error agent")
 
-        error_fixing_agent = self.create_error_fixing_agent()
+        error_agent = self.create_error_agent()
 
         # Read the LaTeX file content
         try:
@@ -599,7 +599,7 @@ class ErrorFixingAgent:
         except Exception as e:
             logger.error(f"Failed to read LaTeX file content: {e}")
             return (
-                ErrorFixingAgentOutput(
+                CompilationErrorOutput(
                     status=CompletionStatus.FAILED,
                     corrected_content="",
                     total_fixes=0,
@@ -619,13 +619,13 @@ class ErrorFixingAgent:
         )
 
         try:
-            logger.info("Calling error fixing agent with line-numbered content...")
+            logger.info("Calling compilation error agent with line-numbered content...")
             error_fixing_result = await Runner.run(
-                error_fixing_agent, error_fixing_prompt
+                error_agent, error_fixing_prompt
             )
 
             # Parse the agent output
-            fixing_output = self.parse_error_fixing_agent_output(error_fixing_result)
+            fixing_output = self.parse_error_agent_output(error_fixing_result)
 
             if fixing_output.status == CompletionStatus.SUCCESS and fixing_output.corrected_content:
                 logger.info(
@@ -654,7 +654,7 @@ class ErrorFixingAgent:
         except Exception as e:
             logger.error(f"Error fixing failed: {e}")
             return (
-                ErrorFixingAgentOutput(
+                CompilationErrorOutput(
                     status=CompletionStatus.FAILED,
                     corrected_content="",
                     total_fixes=0,

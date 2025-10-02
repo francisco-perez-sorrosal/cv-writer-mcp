@@ -17,7 +17,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from .md2latex_agent import MD2LaTeXAgent
-from .latex_expert import LaTeXExpert
+from .compilation import LaTeXExpert
 from .pdf_style_coordinator import PDFStyleCoordinator
 from .utils import read_text_file
 from .logger import LogConfig, LogLevel, configure_logger
@@ -370,6 +370,9 @@ def check_latex() -> None:
 def convert_markdown(
     markdown_file: str = typer.Argument(..., help="Path to the markdown file to convert"),
     output_file: str = typer.Option("", "--output", "-o", help="Custom output filename for .tex file"),
+    template: str = typer.Option(
+        "moderncv_template.tex", "--template", "-t", help="LaTeX template to use"
+    ),
     debug: bool = typer.Option(False, "--debug", help="Run in debug mode"),
 ) -> None:
     """Convert a markdown CV file to LaTeX from the command line."""
@@ -381,6 +384,7 @@ def convert_markdown(
     setup_logging(config.log_level)
 
     console.print(f"[blue]Converting markdown file: {markdown_file}[/blue]")
+    console.print(f"[blue]Using template: {template}[/blue]")
 
     # Check if the input file exists
     md_path = Path(markdown_file)
@@ -397,8 +401,8 @@ def convert_markdown(
     console.print("[green]✅ Input file verified[/green]")
     console.print("[green]✅ OpenAI API key found[/green]")
 
-    # Create converter
-    cv_converter = MD2LaTeXAgent(api_key=config.openai_api_key)
+    # Create converter with specified template
+    cv_converter = MD2LaTeXAgent(api_key=config.openai_api_key, template_name=template)
 
     # Show conversion method
     console.print("[blue]🤖 Using OpenAI agents for markdown to LaTeX conversion[/blue]")

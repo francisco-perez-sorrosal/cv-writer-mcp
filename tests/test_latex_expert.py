@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cv_writer_mcp.latex_expert import LaTeXExpert
+from cv_writer_mcp.compilation import LaTeXExpert
 from cv_writer_mcp.models import (
     CompileLaTeXRequest,
     CompileLaTeXResponse,

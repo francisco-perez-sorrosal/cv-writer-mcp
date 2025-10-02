@@ -112,17 +112,17 @@ class PageCaptureOutput(BaseModel):
     )
 
 
-class LaTeXFixOutput(BaseModel):
-    """Structured output from the LaTeX fix agent."""
+class FormattingOutput(BaseModel):
+    """Structured output from the formatting agent."""
 
     status: CompletionStatus = Field(
-        ..., description="Whether the LaTeX fixes were successfully implemented"
+        ..., description="Whether the formatting improvements were successfully implemented"
     )
     fixes_applied: list[str] = Field(
-        ..., description="List of specific fixes that were implemented"
+        ..., description="List of specific formatting improvements that were implemented"
     )
     improved_latex_content: str = Field(
-        ..., description="The improved LaTeX file content with all fixes applied"
+        ..., description="The improved LaTeX file content with all formatting improvements applied"
     )
     implementation_notes: str = Field(
         ..., description="Detailed explanation of changes made and implementation notes"
@@ -322,8 +322,8 @@ class ErrorFix(BaseModel):
         return "\n".join(lines)
 
 
-class ErrorFixingAgentOutput(BaseModel):
-    """Structured output from the LaTeX error fixing agent."""
+class CompilationErrorOutput(BaseModel):
+    """Structured output from the compilation error agent."""
 
     status: CompletionStatus = Field(
         ..., description="Whether the error fixing process was successful"
@@ -346,7 +346,7 @@ class ErrorFixingAgentOutput(BaseModel):
     )
 
     def __str__(self) -> str:
-        """String representation of error fixing agent output."""
+        """String representation of compilation error agent output."""
         lines = [
             "Error Fixing Agent Output:",
             f"  Status: {self.status.value}",
@@ -594,9 +594,9 @@ def get_output_type_class(output_type_name: str):
     output_type_mapping = {
         "LaTeXOutput": LaTeXOutput,
         "CompilerAgentOutput": CompilerAgentOutput,
-        "ErrorFixingAgentOutput": ErrorFixingAgentOutput,
+        "CompilationErrorOutput": CompilationErrorOutput,
         "PageCaptureOutput": PageCaptureOutput,
-        "LaTeXFixOutput": LaTeXFixOutput,
+        "FormattingOutput": FormattingOutput,
         "PDFAnalysisOutput": PDFAnalysisOutput,
     }
     

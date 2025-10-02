@@ -21,12 +21,18 @@ from .utils import load_agent_config, read_text_file
 class MD2LaTeXAgent:
     """Markdown to LaTeX conversion agent using OpenAI Agents SDK with moderncv template."""
 
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        template_name: str = "moderncv_template.tex",
+    ):
         """Initialize the markdown to LaTeX conversion agent.
 
         Args:
             api_key: OpenAI API key (if None, will use OPENAI_API_KEY env var)
             model: OpenAI model to use for conversion (if None, will use model from agent config)
+            template_name: Name of the LaTeX template file (default: moderncv_template.tex)
         """
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
@@ -34,12 +40,14 @@ class MD2LaTeXAgent:
                 "OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass api_key parameter."
             )
 
+        self.template_name = template_name
+
         # Load agent config first to get the model
         self.agent_config = load_agent_config("md2latex_agent.yaml")
-        
+
         # Use provided model or fall back to config model
         self.model = model or self.agent_config["agent_metadata"]["model"]
-        
+
         self._load_resources()
         self._create_agent()
 
@@ -48,7 +56,7 @@ class MD2LaTeXAgent:
         base_path = Path(__file__).parent.parent.parent
 
         # Load LaTeX template
-        template_path = base_path / "context" / "latex" / "moderncv_template.tex"
+        template_path = base_path / "context" / "latex" / self.template_name
         self.latex_template = read_text_file(template_path, "LaTeX template", ".tex")
         logger.info(f"Loaded LaTeX template from {template_path}")
 

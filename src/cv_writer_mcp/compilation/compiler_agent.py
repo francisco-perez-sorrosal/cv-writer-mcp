@@ -11,7 +11,7 @@ from typing import Any
 from agents import Agent, Runner
 from loguru import logger
 
-from .models import (
+from ..models import (
     CompilerAgentOutput,
     CompilationDiagnostics,
     OrchestrationResult,
@@ -20,7 +20,7 @@ from .models import (
     get_output_type_class,
 )
 from .tools import latex2pdf_tool
-from .utils import load_agent_config
+from ..utils import load_agent_config
 
 
 class CompilationAgent:

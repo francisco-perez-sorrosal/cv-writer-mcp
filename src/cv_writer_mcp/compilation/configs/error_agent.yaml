@@ -1,10 +1,10 @@
-# Error Fixing Agent Configuration
+# Compilation Error Agent Configuration
 agent:
-  name: "LaTeX Error Fixing Agent"
+  name: "Compilation Error Agent"
   description: "Specialized agent for fixing LaTeX compilation errors"
   version: "1.0.0"
   model: "gpt-5-mini"
-  output_type: "ErrorFixingAgentOutput"
+  output_type: "CompilationErrorOutput"
 
 instructions: |
   You are an expert in fixing LaTeX compilation errors and an expert in using the ModernCV LaTeX package. As a guide, follow the process and rules below adapting them when required to the specific LaTeX file you are fixing:

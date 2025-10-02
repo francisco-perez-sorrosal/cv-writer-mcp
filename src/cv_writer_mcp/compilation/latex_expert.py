@@ -9,9 +9,9 @@ from agents import function_tool
 from loguru import logger
 
 from .compiler_agent import CompilationAgent
-from .fixing_agent import ErrorFixingAgent
-from .utils import read_text_file
-from .models import (
+from .error_agent import CompilationErrorAgent
+from ..utils import read_text_file
+from ..models import (
     CompilationDiagnostics,
     CompileLaTeXRequest,
     CompileLaTeXResponse,
@@ -42,7 +42,7 @@ class LaTeXExpert:
         self._compilation_agent = CompilationAgent(
             timeout=self.timeout, diagnostics=self._compilation_diagnostics
         )
-        self._fixing_agent = ErrorFixingAgent(
+        self._fixing_agent = CompilationErrorAgent(
             diagnostics=self._compilation_diagnostics, server_config=config
         )
 

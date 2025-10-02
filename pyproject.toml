@@ -42,16 +42,9 @@ cv-writer-mcp = { path = ".", editable = true }
 
 [tool.pixi.tasks]
 install = "pip install -e ."
-start-mcps = "python -m cv_writer_mcp start-mcps"
+
+# Development commands
 dev = "python -m cv_writer_mcp start --dev"
-check-latex = "python -m cv_writer_mcp check-latex"
-convert-markdown = "python -m cv_writer_mcp convert-markdown --debug input/schwab_cv_tailoring.md --output cv_schwab.tex"
-compile-schwab = "python -m cv_writer_mcp compile-latex --debug output/cv_schwab.tex --output cv_schwab.pdf"
-compile-latex = "python -m cv_writer_mcp compile-latex --debug output/kk.tex --output kk.pdf"
-compile-latex2 = "python -m cv_writer_mcp compile-latex --debug output/improved.tex --output improved_fixed.pdf"
-fix-style = "python -m cv_writer_mcp fix-style --debug"
-fix-style-schwab = "python -m cv_writer_mcp fix-style -p output/cv_schwab.pdf -t output/cv_schwab.tex -o cv_schwab_fixed.tex --debug"
-compile-styled-schwab = "python -m cv_writer_mcp compile-latex --debug output/cv_schwab_fixed.tex --output cv_schwab_styled.pdf"
 test = "pytest tests/ -v"
 test-cov = "pytest --cov=src --cov-report=html tests/"
 lint = "ruff check src/ tests/"
@@ -60,7 +53,19 @@ format = "black src/ tests/"
 type-check = "mypy src/"
 ci = { depends-on = ["format", "lint", "type-check", "test"] }
 
+# MCP main commands
+serve = "python -m cv_writer_mcp start-mcps"
 
+# Partial workflow exercised by commands
+check-latex = "python -m cv_writer_mcp check-latex"
+convert-markdown = "python -m cv_writer_mcp convert-markdown --debug input/schwab_cv_tailoring.md --output cv_schwab.tex"
+my-convert-markdown = "python -m cv_writer_mcp convert-markdown --debug input/schwab_cv_tailoring.md --output my_cv_schwab.tex --template my_template.tex"
+compile-schwab = "python -m cv_writer_mcp compile-latex --debug output/cv_schwab.tex --output cv_schwab.pdf"
+compile-latex = "python -m cv_writer_mcp compile-latex --debug output/my_cv_schwab.tex --output my_cv_schwab.pdf"
+compile-latex2 = "python -m cv_writer_mcp compile-latex --debug output/improved.tex --output improved_fixed.pdf"
+fix-style = "python -m cv_writer_mcp fix-style --debug"
+fix-style-schwab = "python -m cv_writer_mcp fix-style -p output/to_improve_schwab.pdf -t output/to_improve_schwab.tex -o to_improve_schwab_fixed.tex --debug"
+compile-styled-schwab = "python -m cv_writer_mcp compile-latex --debug output/cv_schwab_fixed.tex --output cv_schwab_styled.pdf"
 
 
 [tool.ruff]
