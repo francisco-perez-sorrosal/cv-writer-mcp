@@ -6,8 +6,9 @@ from pathlib import Path
 from loguru import logger
 from agents import Agent, Runner
 
-from .models import CompletionStatus, FormattingOutput
-from .utils import load_agent_config
+from .models import FormattingOutput
+from ..models import CompletionStatus
+from ..utils import load_agent_config
 
 
 class FormattingAgent:
@@ -23,7 +24,7 @@ class FormattingAgent:
 
     def _create_agent(self) -> Agent:
         """Create formatting agent."""
-        from .models import get_output_type_class
+        from ..models import get_output_type_class
         
         output_type_class = get_output_type_class(
             self.agent_config["agent_metadata"]["output_type"]

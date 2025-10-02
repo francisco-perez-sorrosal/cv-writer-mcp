@@ -7,12 +7,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from cv_writer_mcp.md2latex_agent import MD2LaTeXAgent
-from cv_writer_mcp.models import (
-    CompletionStatus,
-    MarkdownToLaTeXRequest,
-    MarkdownToLaTeXResponse,
-)
+from cv_writer_mcp.conversion import MD2LaTeXAgent
+from cv_writer_mcp.conversion.models import MarkdownToLaTeXRequest, MarkdownToLaTeXResponse
+from cv_writer_mcp.models import CompletionStatus
 
 
 class TestMD2LaTeXAgent:
@@ -24,9 +21,9 @@ class TestMD2LaTeXAgent:
 
     def test_initialization(self):
         """Test MD2LaTeXAgent initialization."""
-        with patch("cv_writer_mcp.md2latex_agent.load_agent_config") as mock_load_config, \
-             patch("cv_writer_mcp.md2latex_agent.read_text_file") as mock_read_file, \
-             patch("cv_writer_mcp.md2latex_agent.Agent") as mock_agent_class:
+        with patch("cv_writer_mcp.conversion.md2latex_agent.load_agent_config") as mock_load_config, \
+             patch("cv_writer_mcp.conversion.md2latex_agent.read_text_file") as mock_read_file, \
+             patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class:
             
             # Mock config
             mock_config = {
@@ -60,10 +57,10 @@ class TestMD2LaTeXAgent:
     @pytest.mark.asyncio
     async def test_convert_success(self):
         """Test successful markdown to LaTeX conversion."""
-        with patch("cv_writer_mcp.md2latex_agent.load_agent_config") as mock_load_config, \
-             patch("cv_writer_mcp.md2latex_agent.read_text_file") as mock_read_file, \
-             patch("cv_writer_mcp.md2latex_agent.Agent") as mock_agent_class, \
-             patch("cv_writer_mcp.md2latex_agent.Runner") as mock_runner, \
+        with patch("cv_writer_mcp.conversion.md2latex_agent.load_agent_config") as mock_load_config, \
+             patch("cv_writer_mcp.conversion.md2latex_agent.read_text_file") as mock_read_file, \
+             patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class, \
+             patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner, \
              patch("pathlib.Path.write_text") as mock_write:
             
             # Mock config
@@ -105,10 +102,10 @@ class TestMD2LaTeXAgent:
     @pytest.mark.asyncio
     async def test_convert_empty_latex(self):
         """Test conversion with empty LaTeX content."""
-        with patch("cv_writer_mcp.md2latex_agent.load_agent_config") as mock_load_config, \
-             patch("cv_writer_mcp.md2latex_agent.read_text_file") as mock_read_file, \
-             patch("cv_writer_mcp.md2latex_agent.Agent") as mock_agent_class, \
-             patch("cv_writer_mcp.md2latex_agent.Runner") as mock_runner:
+        with patch("cv_writer_mcp.conversion.md2latex_agent.load_agent_config") as mock_load_config, \
+             patch("cv_writer_mcp.conversion.md2latex_agent.read_text_file") as mock_read_file, \
+             patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class, \
+             patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner:
             
             # Mock config
             mock_config = {
@@ -148,10 +145,10 @@ class TestMD2LaTeXAgent:
     @pytest.mark.asyncio
     async def test_convert_exception(self):
         """Test conversion with exception."""
-        with patch("cv_writer_mcp.md2latex_agent.load_agent_config") as mock_load_config, \
-             patch("cv_writer_mcp.md2latex_agent.read_text_file") as mock_read_file, \
-             patch("cv_writer_mcp.md2latex_agent.Agent") as mock_agent_class, \
-             patch("cv_writer_mcp.md2latex_agent.Runner") as mock_runner:
+        with patch("cv_writer_mcp.conversion.md2latex_agent.load_agent_config") as mock_load_config, \
+             patch("cv_writer_mcp.conversion.md2latex_agent.read_text_file") as mock_read_file, \
+             patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class, \
+             patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner:
             
             # Mock config
             mock_config = {

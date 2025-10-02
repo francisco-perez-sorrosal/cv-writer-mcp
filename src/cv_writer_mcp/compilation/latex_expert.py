@@ -11,15 +11,14 @@ from loguru import logger
 from .compiler_agent import CompilationAgent
 from .error_agent import CompilationErrorAgent
 from ..utils import read_text_file
-from ..models import (
+from .models import (
     CompilationDiagnostics,
     CompileLaTeXRequest,
     CompileLaTeXResponse,
-    CompletionStatus,
-    OrchestrationResult,
     LaTeXEngine,
-    ServerConfig,
+    OrchestrationResult,
 )
+from ..models import CompletionStatus, ServerConfig
 
 
 class LaTeXExpert:
@@ -213,40 +212,6 @@ class LaTeXExpert:
                 pdf_url=None,
                 message=f"Unexpected error: {str(e)}",
             )
-
-    def _create_file_reading_tool(self) -> Any:
-        """Create a function tool for reading LaTeX file content only."""
-        from .models import FileOperationResult, FileOperationType
-
-        async def file_reading_tool(file_path: str) -> str:
-            """Read LaTeX file content from a given path.
-
-            Args:
-                file_path: Path to the .tex file
-
-            Returns:
-                JSON string containing the file content or error
-            """
-            try:
-                file_path_obj = Path(file_path)
-                file_content = read_text_file(file_path_obj, "file")
-                result = FileOperationResult.success_read(
-                    file_path, file_content, len(file_content.splitlines())
-                )
-                return result.to_json()
-
-            except FileNotFoundError:
-                result = FileOperationResult.error_file_not_found(
-                    file_path, FileOperationType.READ
-                )
-                return result.to_json()
-            except Exception as e:
-                result = FileOperationResult.error_exception(
-                    file_path, FileOperationType.READ, e
-                )
-                return result.to_json()
-
-        return function_tool(file_reading_tool)
 
     async def orchestrate_compilation(
         self,

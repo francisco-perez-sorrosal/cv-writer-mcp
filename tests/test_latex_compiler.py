@@ -7,13 +7,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from cv_writer_mcp.compilation import LaTeXExpert
-from cv_writer_mcp.models import (
+from cv_writer_mcp.compilation.models import (
     CompileLaTeXRequest,
     CompileLaTeXResponse,
-    CompletionStatus,
     LaTeXEngine,
-    ServerConfig,
 )
+from cv_writer_mcp.models import CompletionStatus, ServerConfig
 
 
 class TestLaTeXCompiler:
@@ -51,7 +50,7 @@ class TestLaTeXCompiler:
         )
 
         with patch.object(LaTeXExpert, "orchestrate_compilation") as mock_agent:
-            from cv_writer_mcp.models import OrchestrationResult
+            from cv_writer_mcp.compilation.models import OrchestrationResult
 
             mock_agent.return_value = OrchestrationResult(
                 success=True,
@@ -225,7 +224,7 @@ class TestLaTeXCompiler:
 
             # Mock the orchestrate_compilation method to avoid actual agent execution
             with patch.object(compiler, "orchestrate_compilation") as mock_agent:
-                from cv_writer_mcp.models import OrchestrationResult
+                from cv_writer_mcp.compilation.models import OrchestrationResult
 
                 mock_agent.return_value = OrchestrationResult(
                     success=True,
@@ -264,7 +263,7 @@ class TestLaTeXCompiler:
 
             # Mock the orchestrate_compilation method to avoid actual LaTeX compilation
             with patch.object(compiler, "orchestrate_compilation") as mock_compile:
-                from cv_writer_mcp.models import OrchestrationResult
+                from cv_writer_mcp.compilation.models import OrchestrationResult
 
                 mock_compile.return_value = OrchestrationResult(
                     success=True,

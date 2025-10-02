@@ -7,9 +7,10 @@ from pathlib import Path
 from loguru import logger
 
 from .formatting_agent import FormattingAgent
-from .models import CompletionStatus, PDFAnalysisRequest, PDFAnalysisResponse
+from .models import PDFAnalysisRequest, PDFAnalysisResponse
 from .page_capture_agent import PageCaptureAgent, PageCaptureRequest
-from .utils import read_text_file
+from ..models import CompletionStatus
+from ..utils import read_text_file
 
 
 class PDFStyleCoordinator:

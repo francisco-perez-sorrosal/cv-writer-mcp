@@ -11,14 +11,13 @@ from typing import Any
 from agents import Agent, Runner
 from loguru import logger
 
-from ..models import (
+from .models import (
     CompilerAgentOutput,
     CompilationDiagnostics,
-    OrchestrationResult,
     LaTeXEngine,
-    CompletionStatus,
-    get_output_type_class,
+    OrchestrationResult,
 )
+from ..models import CompletionStatus, get_output_type_class
 from .tools import latex2pdf_tool
 from ..utils import load_agent_config
 

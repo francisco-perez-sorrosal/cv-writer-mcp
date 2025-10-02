@@ -125,9 +125,8 @@ def load_agent_config(config_file: str) -> Dict[str, Any]:
     search_paths = [
         base_dir / config_file,  # Root level (current location for non-refactored agents)
         base_dir / "compilation" / "configs" / config_file,  # Compilation package
-        # Future: Add other package paths here as needed
-        # base_dir / "conversion" / "configs" / config_file,
-        # base_dir / "analysis" / "configs" / config_file,
+        base_dir / "conversion" / "configs" / config_file,  # Conversion package
+        base_dir / "style" / "configs" / config_file,  # Style package
     ]
 
     # Find the first existing config file

@@ -7,9 +7,10 @@ from pathlib import Path
 from loguru import logger
 from agents import Agent, Runner
 
-from .models import CompletionStatus, PageCaptureRequest, PageCaptureResponse
+from .models import PageCaptureRequest, PageCaptureResponse
 from .tools import pdf_computer_use_tool
-from .utils import load_agent_config
+from ..models import CompletionStatus
+from ..utils import load_agent_config
 
 
 class PageCaptureAgent:
@@ -25,7 +26,7 @@ class PageCaptureAgent:
 
     def _create_agent(self) -> Agent:
         """Create page capture agent."""
-        from .models import get_output_type_class
+        from ..models import get_output_type_class
         
         output_type_class = get_output_type_class(
             self.agent_config["agent_metadata"]["output_type"]

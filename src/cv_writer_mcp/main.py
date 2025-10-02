@@ -16,23 +16,15 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from .md2latex_agent import MD2LaTeXAgent
+from .conversion import MD2LaTeXAgent
 from .compilation import LaTeXExpert
-from .pdf_style_coordinator import PDFStyleCoordinator
+from .style import PDFStyleCoordinator
 from .utils import read_text_file
 from .logger import LogConfig, LogLevel, configure_logger
-from .models import (
-    CompileLaTeXRequest,
-    CompileLaTeXResponse,
-    CompletionStatus,
-    HealthStatusResponse,
-    LaTeXEngine,
-    MarkdownToLaTeXRequest,
-    MarkdownToLaTeXResponse,
-    PDFAnalysisRequest,
-    PDFAnalysisResponse,
-    ServerConfig,
-)
+from .compilation.models import CompileLaTeXRequest, CompileLaTeXResponse, LaTeXEngine
+from .conversion.models import MarkdownToLaTeXRequest, MarkdownToLaTeXResponse
+from .style.models import PDFAnalysisRequest, PDFAnalysisResponse
+from .models import CompletionStatus, HealthStatusResponse, ServerConfig
 
 # Load environment variables
 load_dotenv()
