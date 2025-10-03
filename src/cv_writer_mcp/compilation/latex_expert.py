@@ -12,6 +12,7 @@ from .compiler_agent import CompilationAgent
 from .error_agent import CompilationErrorAgent
 from .models import (
     CompilationDiagnostics,
+    CompilationErrorOutput,
     CompileLaTeXRequest,
     CompileLaTeXResponse,
     LaTeXEngine,
@@ -161,6 +162,127 @@ class LaTeXExpert:
                 message=f"Unexpected error: {str(e)}",
             )
 
+    async def _compile_step(
+        self,
+        tex_file_path: Path,
+        output_path: Path,
+        engine: LaTeXEngine,
+        attempt: int,
+        max_attempts: int,
+        user_instructions: str | None = None,
+    ) -> OrchestrationResult:
+        """Execute a single compilation step.
+
+        Args:
+            tex_file_path: Path to .tex file to compile
+            output_path: Path where PDF should be saved
+            engine: LaTeX engine to use
+            attempt: Current attempt number (1-indexed)
+            max_attempts: Maximum number of attempts
+            user_instructions: Optional user instructions
+
+        Returns:
+            OrchestrationResult with compilation outcome
+        """
+        logger.info(f"🔄 COMPILATION ATTEMPT {attempt}/{max_attempts}")
+        logger.info(f"📄 COMPILING FILE: {tex_file_path}")
+
+        try:
+            compilation_result = await self._compilation_agent.compile_latex(
+                tex_file_path, output_path, engine, user_instructions
+            )
+
+            if compilation_result.status == CompletionStatus.SUCCESS:
+                logger.info(f"✅ Compilation successful (Attempt {attempt})")
+                return OrchestrationResult(
+                    status=CompletionStatus.SUCCESS,
+                    compilation_time=compilation_result.compilation_time,
+                    log_output=compilation_result.log_output,
+                    output_path=output_path,
+                    errors_found=None,
+                    exit_code=0,
+                )
+            else:
+                logger.warning(f"❌ Compilation failed (Attempt {attempt})")
+                logger.warning(f"{compilation_result}")
+                return compilation_result
+
+        except Exception as e:
+            logger.error(f"❌ Compilation exception (Attempt {attempt}): {e}")
+            return OrchestrationResult(
+                status=CompletionStatus.FAILED,
+                message=f"Compilation exception: {str(e)}",
+                compilation_time=0.0,
+                errors_found=[str(e)],
+                exit_code=1,
+            )
+
+    async def _fix_step(
+        self, tex_file_path: Path, compilation_result: OrchestrationResult, attempt: int
+    ) -> tuple[CompilationErrorOutput, Path | None]:
+        """Execute a single error fixing step.
+
+        Args:
+            tex_file_path: Path to .tex file to fix
+            compilation_result: Failed compilation result with errors
+            attempt: Current attempt number (1-indexed)
+
+        Returns:
+            Tuple of (fixing output, corrected file path or None)
+        """
+        logger.info(f"🔧 FIXING ERRORS (After Attempt {attempt})")
+
+        try:
+            fixing_output, corrected_file_path = await self._fixing_agent.fix_errors(
+                tex_file_path, compilation_result
+            )
+
+            if fixing_output.status == CompletionStatus.SUCCESS and corrected_file_path:
+                logger.info(
+                    f"✅ Fixed {fixing_output.total_fixes} error(s) → {corrected_file_path}"
+                )
+                for fix in fixing_output.fixes_applied:
+                    logger.debug(f"  - {fix}")
+            else:
+                logger.warning("❌ Error fixing failed or made no changes")
+
+            return fixing_output, corrected_file_path
+
+        except Exception as e:
+            logger.error(f"❌ Error fixing exception: {e}")
+            return (
+                CompilationErrorOutput(
+                    status=CompletionStatus.FAILED,
+                    corrected_content="",
+                    total_fixes=0,
+                    fixes_applied=[],
+                    file_modified=False,
+                    message=f"Fixing exception: {str(e)}",
+                ),
+                None,
+            )
+
+    def _create_failure_result(
+        self, last_result: OrchestrationResult, reason: str
+    ) -> OrchestrationResult:
+        """Create a final failure result.
+
+        Args:
+            last_result: The last compilation result
+            reason: Reason for final failure
+
+        Returns:
+            OrchestrationResult indicating final failure
+        """
+        return OrchestrationResult(
+            status=CompletionStatus.FAILED,
+            message=f"{reason}. Last error: {last_result.message}",
+            compilation_time=last_result.compilation_time,
+            log_output=last_result.log_output,
+            errors_found=last_result.errors_found,
+            exit_code=last_result.exit_code,
+        )
+
     async def orchestrate_compilation(
         self,
         tex_file_path: Path,
@@ -175,8 +297,7 @@ class LaTeXExpert:
         1. Compilation Agent: Handles the actual LaTeX compilation
         2. Error Fixing Agent: Analyzes and fixes LaTeX errors when compilation fails
 
-        Coordinates between the compilation agent and error fixing agent
-        to achieve successful LaTeX compilation through iterative error fixing.
+        Uses deterministic flow pattern: compile → (if fail) → fix → compile
         The process iterates up to max_attempts times, with error fixing between failed attempts.
 
         Args:
@@ -189,121 +310,44 @@ class LaTeXExpert:
         Returns:
             Final compilation result
         """
-        # Error fixing agent is already initialized in __init__
+        logger.info(f"🚀 Starting LaTeX compilation orchestration ({max_attempts} max attempts)")
 
-        logger.info(
-            f"Starting LaTeX -> PDF commpilation orchestration ({max_attempts} max attempts)"
-        )
-
-        current_tex_path = tex_file_path  # Current file being compiled
-        final_result = None
+        current_file = tex_file_path
 
         for attempt in range(1, max_attempts + 1):
-            logger.info(f"🔄 COMPILATION ATTEMPT {attempt}/{max_attempts}")
-            logger.info(f"📄 COMPILING FILE: {current_tex_path}")
-
-            try:
-                # Step 1: Compile with compilation agent using shell commands
-                compilation_result = await self._compilation_agent.compile_latex(
-                    current_tex_path, output_path, engine, user_instructions
-                )
-
-                # Success check - rely on agent's determination
-                if compilation_result.status == CompletionStatus.SUCCESS:
-                    logger.info(f"Compilation successful (Attempt {attempt}")
-
-                    # Create final successful result
-                    final_result = OrchestrationResult(
-                        status=CompletionStatus.SUCCESS,
-                        compilation_time=compilation_result.compilation_time,
-                        log_output=compilation_result.log_output,
-                        output_path=output_path,
-                    )
-                    break
-                else:
-                    # Failed compilation: - Log the result (counters already incremented by compiler_agent)
-                    # Log complete compilation result information using string representation
-                    logger.warning("--------------------------------")
-                    logger.warning(f"Compilation failed (Attempt {attempt})")
-                    logger.warning(f"{compilation_result}")
-                    logger.warning("--------------------------------")
-
-                    if attempt < max_attempts:
-                        # Step 2: Fix errors with error fixing agent
-                        logger.warning(
-                            f"Attempt to fix errors with fixing agent (Attempt {attempt})"
-                        )
-
-                        try:
-                            # Use the error fixing agent to fix errors
-                            # Pass compilation_result directly which contains errors_found and exit_code
-                            fixing_output, corrected_file_path = (
-                                await self._fixing_agent.fix_errors(
-                                    current_tex_path, compilation_result
-                                )
-                            )
-
-                            if fixing_output.status == CompletionStatus.SUCCESS and corrected_file_path:
-                                logger.info(
-                                    f"Error fixing completed: {fixing_output.total_fixes} fixes applied"
-                                )
-
-                                # Log details of each fix
-                                for fix in fixing_output.fixes_applied:
-                                    logger.info(f"  - {fix}")
-
-                                # Update current_tex_path to use the corrected file for next compilation attempt
-                                current_tex_path = corrected_file_path
-                                logger.info(
-                                    f"🔄 TARGET UPDATED: Next compilation will use: {current_tex_path}"
-                                )
-                                logger.info("Proceeding to next compilation attempt")
-                            else:
-                                logger.warning(
-                                    "Error fixing did not modify the file or failed"
-                                )
-                                break
-
-                        except Exception as e:
-                            logger.error(f"Error fixing failed: {e}")
-                            break
-                    else:
-                        # Final attempt failed - log complete result information using string representation
-                        logger.error(f"All {max_attempts} compilation attempts failed")
-                        logger.error("Final compilation result details:")
-                        logger.error(f"{compilation_result}")
-
-                        final_result = OrchestrationResult(
-                            status=CompletionStatus.FAILED,
-                            message=f"Compilation failed after {max_attempts} attempts. Last error: {compilation_result.message}",
-                            compilation_time=compilation_result.compilation_time,
-                            log_output=compilation_result.log_output,
-                        )
-
-            except Exception as e:
-                logger.error(f"Attempt {attempt} failed with exception: {e}")
-                logger.error(f"Exception {type(e).__name__} details: {str(e)}")
-
-                final_result = OrchestrationResult(
-                    status=CompletionStatus.FAILED,
-                    message=f"Compilation Failed after {attempt}/{max_attempts} attempts. Last exception: {str(e)}",
-                    compilation_time=0.0,
-                )
-
-        if final_result is None:
-            # This shouldn't happen, but just in case
-            logger.error("Orchestration failed - no result generated")
-            final_result = OrchestrationResult(
-                status=CompletionStatus.FAILED,
-                message="Orchestration failed - no result generated",
-                compilation_time=0.0,
+            # Step 1: Attempt compilation
+            compile_result = await self._compile_step(
+                current_file, output_path, engine, attempt, max_attempts, user_instructions
             )
 
-        # Log final result summary using string representation
-        logger.info("Orchestration completed. Final result:")
-        logger.info(f"{final_result}")
+            # Gate: Success? Done.
+            if compile_result.status == CompletionStatus.SUCCESS:
+                logger.info("✅ Compilation orchestration succeeded")
+                logger.info(str(self._compilation_diagnostics))
+                return compile_result
 
-        # Log comprehensive diagnostics summary
+            # Step 2: Try to fix errors (if retries remain)
+            if attempt < max_attempts:
+                _, corrected_file = await self._fix_step(
+                    current_file, compile_result, attempt
+                )
+
+                # Gate: Fixed? Use corrected file for next compile
+                if corrected_file:
+                    current_file = corrected_file
+                    logger.info(f"🔄 Retrying with fixed file: {current_file}")
+                    continue
+                else:
+                    # Cannot fix, fail immediately
+                    result = self._create_failure_result(compile_result, "Error fixing failed")
+                    logger.error(f"❌ Orchestration failed: {result.message}")
+                    logger.info(str(self._compilation_diagnostics))
+                    return result
+
+        # Gate: All attempts exhausted
+        result = self._create_failure_result(
+            compile_result, f"Failed after {max_attempts} attempts"
+        )
+        logger.error(f"❌ Orchestration failed: {result.message}")
         logger.info(str(self._compilation_diagnostics))
-
-        return final_result
+        return result

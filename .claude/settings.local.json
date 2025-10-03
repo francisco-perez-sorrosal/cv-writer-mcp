@@ -3,7 +3,8 @@
     "allow": [
       "Bash(cat:*)",
       "Bash(tree:*)",
-      "Bash(pixi run:*)"
+      "Bash(pixi run:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": [],
     "ask": []
