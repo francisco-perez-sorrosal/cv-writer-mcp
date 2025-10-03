@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from typer.testing import CliRunner
 
-from cv_writer_mcp.main import app
 from cv_writer_mcp.compilation.models import CompileLaTeXResponse
+from cv_writer_mcp.main import app
 from cv_writer_mcp.models import CompletionStatus, ServerConfig
 
 

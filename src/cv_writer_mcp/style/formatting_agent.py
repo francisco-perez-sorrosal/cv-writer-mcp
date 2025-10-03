@@ -1,14 +1,13 @@
 """Formatting agent for implementing visual formatting improvements."""
 
 import os
-from pathlib import Path
 
-from loguru import logger
 from agents import Agent, Runner
+from loguru import logger
 
-from .models import FormattingOutput
 from ..models import CompletionStatus
 from ..utils import load_agent_config
+from .models import FormattingOutput
 
 
 class FormattingAgent:
@@ -25,11 +24,11 @@ class FormattingAgent:
     def _create_agent(self) -> Agent:
         """Create formatting agent."""
         from ..models import get_output_type_class
-        
+
         output_type_class = get_output_type_class(
             self.agent_config["agent_metadata"]["output_type"]
         )
-        
+
         return Agent(
             name=self.agent_config["agent_metadata"]["name"],
             instructions=self.agent_config["instructions"],
@@ -47,7 +46,7 @@ class FormattingAgent:
         """Implement formatting improvements based on visual analysis results."""
         try:
             agent = self._create_agent()
-            
+
             # Create prompt with manual replacement to avoid LaTeX brace conflicts
             template = self.agent_config["prompt_template"]
             prompt = (
@@ -55,7 +54,7 @@ class FormattingAgent:
                 .replace("{visual_analysis_results}", visual_analysis_results)
                 .replace("{suggested_fixes}", "\n".join(suggested_fixes))
             )
-            
+
             result = await Runner.run(agent, prompt)
             return result.final_output
 

@@ -1,193 +1,99 @@
-# Francisco Perez-Sorrosal
-## *Principal Research Engineer (Yahoo Inc.)*
+Francisco Perez-Sorrosal
 
-**94123 San Francisco, CA (U.S.)**  
-📧 **Ask through LinkedIn**  
-🔗 **[LinkedIn Profile](https://www.linkedin.com/in/fperezsorrosal)**  
-🌐 **[Personal Website](http://francisco-perez-sorrosal.github.io/)**
+Senior AI/ML Research Engineer | Principal Researcher | Distributed Systems Expert
+San Francisco, CA | LinkedIn
+ | GitHub
+ | Full CV PDF
 
-*"Strive not to be a success, but rather to be of value." — Albert Einstein*
+Professional Summary
 
-## Professional Summary
+Senior Research Engineer with 15+ years of experience at the intersection of AI/ML, NLP, and large-scale distributed systems. Specialized in Generative AI, LLMs, multi-agent architectures, and scalable ML pipelines with demonstrated success in delivering enterprise-level, production-ready AI solutions. Adept at advancing cutting-edge research, aligning strategy with execution, and mentoring teams to achieve scientific and engineering excellence. Experienced in driving innovation across ads, mail, knowledge graphs, and content platforms, with results that translate directly to improved business outcomes.
 
-Accomplished AI Research Engineer with 10+ years of experience advancing machine learning, natural language processing, and generative AI in production environments. Proven track record of designing and deploying scalable AI systems that deliver measurable business value, from knowledge graph optimization to large-scale content classification. Expert in transforming research innovations into production-ready solutions using Python, PyTorch, HuggingFace, and modern ML frameworks. Strong mentor and collaborator with extensive experience leading cross-functional teams and driving enterprise AI strategy.
+Key Technical Competencies
 
-## Professional Experience
+AI/ML & NLP: Generative AI, LLMs, Hugging Face Transformers, PyTorch, Scikit-learn
 
-### Principal Research Engineer | Yahoo Inc. (2015–Present)
-*San Francisco Bay Area*
+Data Science: SQL, Pandas, Dask, Knowledge Graphs, Large-scale data engineering
 
-#### Knowledge Graph Science (2023–Present)
-**AI/ML Expert - Large-Scale Entity Reconciliation & LLM Integration**
+MLOps & Deployment: Ray, NVIDIA Triton Server, Cloud Deployment (AWS, GCP, Kubernetes)
 
-**YKG Entity Reconciliation Model Training** (2023-2024)
-- **Business Impact**: Achieved 22.23% and 16.11% improvements in precision/recall for Person entities, plus 5% and 4% improvements for Creative Works
-- **Technical Innovation**: Fine-tuned transformer-based language models on heterogeneously labeled datasets, replacing 30+ legacy models with 4 unified, type-agnostic models
-- **Efficiency Gains**: Reduced model size by 33% while maintaining accuracy, significantly lowering storage requirements and improving deployment efficiency
-- **Scale**: Expanded entity type coverage to 20+ new people entity types and 32+ creative work types
+Programming & Engineering: Python, Java, Go, Rust | REST APIs | Unit Testing | Distributed Systems
 
-**LLM-Based Dataset Quality Enhancement** (2024)
-- **Challenge**: Improved labeling accuracy of semi-supervised entity matching datasets
-- **Solution**: Implemented generative Entity Matching solution using Llama 2 for automated validation and re-labeling
-- **Outcome**: Enhanced dev/test dataset quality through intelligent misclassification detection and correction
+Leadership: Team mentoring, code review, technical presentations, strategic advisory
 
-**Cloud-Based AI Model Deployment** (2023)
-- **Infrastructure**: Designed and implemented Ray Serve-based solution for cloud model deployment
-- **Optimization**: Evaluated and optimized CPU vs GPU approaches for cost-effective large-scale inference
-- **Pipeline**: Built end-to-end automated pipeline from data curation to inference testing for entity reconciliation models
+Professional Experience
+Strategic Advisor on AI – Independent (2025–Present)
 
-#### Mail Science Team (Jun–Dec 2022)
-**AI/ML Expert - Deep Learning Production Systems**
+Conducted advanced research into multi-agent AI frameworks (AutoGen, CrewAI, OpenAI orchestration), with applications in autonomous reasoning and next-generation LLM workflows.
 
-**Kamino Project - Advanced Mail Classification**
-- **Goal**: Modernized legacy production models with deep learning-based solutions optimized for large-scale deployment
-- **Approach**: Developed Teacher/Student knowledge distillation framework using HuggingFace, creating both online (speed-optimized) and offline (accuracy-optimized) models
-- **Results**: Doubled deployable taxonomy categories while improving existing category performance by 3.1-5.9%
-- **Technologies**: PyTorch, HuggingFace Transformers, distributed training pipelines
+Advised early-stage startups including Wasmer on AI integration patterns, strategy, and production deployment requirements.
 
-#### AI/ML Strategy - Digital Transformation Office (Apr–Sep 2022)
-**ML/AI Expert & Strategy Lead**
+Ensured state-of-the-art adoption of Agentic AI practices across product development cycles.
 
-**Enterprise AI/ML Cloud Strategy Definition**
-- **Leadership Role**: Led Model Development subgroup discussions for Yahoo's cloud infrastructure transition
-- **Deliverables**: Defined requirements, standards, and frameworks for scaling ML/DL applications across the enterprise
-- **Impact**: Delivered prioritized recommendations and implementation roadmap for frictionless ML/DL workflows in cloud environments
+Principal Research Engineer – Knowledge Graph Science @ Yahoo (2023–2024)
 
-#### Ads Science Team (2021–2022)
-**ML/AI Expert - Contextual Targeting Innovation**
+Entity Reconciliation: Fine-tuned transformer-based models on heterogeneous datasets to improve entity linking. Achieved precision/recall improvements of 22%+ in people categories and 16%+ in creative works.
 
-**Contextual Targeting Solution for Cookie-less World**
-- **Business Context**: Developed contextual targeting alternative as behavioral tracking capabilities diminished
-- **Technical Solution**: Built multilingual hierarchical multi-label classification model for Yahoo Interest Categories taxonomy
-- **Innovation**: Created web page classification system without content crawling requirements
-- **Publication**: Co-authored "Multilingual taxonomic web page classification for contextual targeting at Yahoo" (ACM SIGKDD 2022, 7 citations)
+Dataset Quality Enhancement: Designed an LLM-based validation pipeline for semi-supervised labels, substantially increasing dataset reliability.
 
-#### Content Platform Science (2018–2023)
-**Principal Research Engineer - Advanced ML/DL Systems**
+Pipeline Innovation: Reduced production model maintenance from ~30 heterogeneous models to 4 unified LLM-powered systems, improving scalability and lowering costs.
 
-**Deep Learning-based Multi-label Classification** (2020-2021)
-- **Modernization**: Transformed production infrastructure with modern deep learning models
-- **Pipeline**: Developed HuggingFace Transformers-based pipeline for multi-label, multi-class, and binary classification
-- **Performance**: Achieved +10% improvement over baseline production models
-- **Deployment**: Built NVIDIA Triton Server-based serving pipeline for production deployment
+Deployment: Implemented cloud-based inference with Ray Serve, balancing CPU/GPU cost-efficiency.
 
-**Few-shot Classification Research** (2021)
-- **Innovation**: Modified transformer architectures (BERT) for parallel prefix conditioning
-- **Method**: Achieved fast, effective few-shot classification through parallel category label encoding
-- **Results**: Demonstrated improved few-shot performance and significant speedup over traditional approaches
-- **Scalability**: Proved approach could scale to large category numbers with zero-shot learning potential
+Principal Research Engineer – Yahoo Mail (2022)
 
-**Production Clickbait Classification** (2019)
-- **Technical Achievement**: Replaced SVM-based production model with BERT-based solution
-- **Performance**: Improved F1 metric by 5+ percentage points over existing production classifier
-- **Innovation**: Developed PoC generative-based approach using Google's T5 model
+Designed knowledge distillation frameworks for mail classification: created teacher-student models that increased taxonomy coverage while boosting accuracy by 3–6%.
 
-**Hierarchical Transfer Learning Research** (2018)
-- **Research Contribution**: Proposed novel transfer learning strategy for hierarchical text classification
-- **Method**: Initialized child classifiers using parent classifier parameters for improved performance
-- **Publication**: "Hierarchical transfer learning for multi-label text classification" (ACL 2019, 127 citations)
+Delivered real-time (low-latency) and offline (high-accuracy) models for enterprise deployment at scale.
 
-### Senior Research Engineer | Yahoo Inc. (2015–2018)
-*Sunnyvale, CA*
+Principal Research Engineer – Yahoo Ads (2021–2022)
 
-**Distributed Systems & ML Pipeline Development**
-- **Scalability**: Built k8s-make framework for parallelizing SVM training across Yahoo's on-premises clusters
-- **Data Pipeline**: Developed scalable ML pipeline for data ingestion, model training, and evaluation
-- **Production Systems**: Supported Twitter Firehose integration and large-scale content ingestion platform
+Built a multilingual contextual targeting model using hierarchical multi-label classification for web categorization.
 
-**Apache Omid Transaction Manager**
-- **Open Source Leadership**: Transferred Omid as full open-source project to Apache Software Foundation
-- **Technical Innovation**: Added High Availability support and multi-core scaling optimizations
-- **Research Impact**: "Omid, reloaded: scalable and Highly-Available transaction processing" (USENIX FAST 2017, 20 citations)
+Work resulted in an ACM SIGKDD 2022 publication with growing citations.
 
-### Earlier Experience (2003–2015)
-**Research Engineer | Yahoo Labs Spain (2012–2015)**
-- Architected and implemented distributed systems for big data processing
-- Developed transaction management systems for large-scale datastores
-- Led European Framework Programme research initiatives
+Principal Research Engineer – Verizon Media Science & Content Platform (2018–2021)
 
-**Software Architect | Industry & Academia (2003–2012)**
-- Built high-availability platforms for enterprise applications
-- Conducted research in distributed systems, middleware architectures, and autonomic computing
-- Published extensively in top-tier conferences (VLDB, Middleware, WWW, ICDCS)
+Developed deep learning pipelines with Hugging Face Transformers, achieving +10% improvements over legacy systems.
 
-## Patents
+Proposed and implemented few-shot classification methods leveraging prefix conditioning for transformers, improving zero-shot category expansion.
 
-- **2025**: *Systems and methods for automatically adding text content to generated images* (App. 18/512,871)
-- **2024**: *Method and system for webpage classification and content delivery* (App. 18/365,941)
+Authored ACL 2019 paper (127 citations) on hierarchical transfer learning for text classification.
 
-## Technical Skills
+Earlier Roles (2012–2017)
 
-### AI/ML & Data Science
-**Advanced Expertise**: PyTorch, TensorFlow, Scikit-learn, HuggingFace Transformers, LangChain, LangGraph
-**Specialized Areas**: Natural Language Processing, Generative AI, Multi-label Classification, Knowledge Graphs
-**Data Tools**: Pandas, Dask, SQL, Vector Databases, Large-scale Data Pipeline Development
-**MLOps**: Ray, NVIDIA Triton Server, Model Deployment & Monitoring
+Content Ingestion Platform, Yahoo Labs: Architected pipelines for large-scale ingestion and classification. Created K8s-based scaling workflows for ML pipelines.
 
-### Programming & Engineering
-**Primary Languages**: Python (Expert), Java, Rust, Go
-**Cloud Platforms**: AWS, Google Cloud, Docker, Kubernetes
-**Development**: RESTful APIs, Distributed Systems, Software Architecture, Unit Testing
-**Tools**: Git, GitHub Actions, GitLab CI, IntelliJ, VSCode, Cursor, Claude Code
+Omid – Apache Foundation: Contributed as committer to a scalable transaction manager for HBase, later adopted into ASF.
 
-### Data & Infrastructure
-**Databases**: Relational, NoSQL, Vector Databases, HBase
-**Big Data**: Distributed Processing, Scalability Optimization, Performance Tuning
-**Systems**: UNIX/Linux Administration, High Availability Design
+Academic Research (UPM): Completed Ph.D. in Computer Science, specializing in distributed and transactional systems. Authored publications in VLDB, WWW, Middleware, EDCC with 400+ citations.
 
-## Education
+Education
 
-### Ph.D. in Computer Science (2003-2009)
-**Universidad Politécnica de Madrid (UPM), Spain**
-- **Specialization**: Distributed Systems, Transactional Systems, High Availability
-- **Thesis**: "Middleware for High Available and Scalable Multi-Tier and Service-Oriented Architectures"
-- **Research Impact**: Multiple publications in top-tier conferences with 400+ total citations
+Ph.D. in Computer Science – Universidad Politécnica de Madrid, Spain (Distributed Systems & AI)
 
-### M.Sc. & B.Eng. in Computer Science (1994–2001)
-**Universidad Pontificia de Salamanca, Spain**
+M.Sc. & B.Eng. in Computer Science – Universidad Pontificia de Salamanca
 
-### Postgraduate Certificate in Education (2004)
-**Universidad Complutense de Madrid (UCM), Spain**
+Postgraduate Certificate in Education – Universidad Complutense de Madrid
 
-## Continuous Learning (Recent AI/ML Certifications)
+Leadership & Mentoring
 
-**2025**
-- Claude Code: A Highly Agentic Coding Assistant (DeepLearning.AI)
-- Model Context Protocol: Advanced Topics (Anthropic Education)
-- LLMs as Operating Systems: Agent Memory (DeepLearning.AI)
-- Building toward Computer Use with Anthropic (DeepLearning.AI)
-- MCP: Build Rich-Context AI Apps with Anthropic (DeepLearning.AI)
+Led ML working groups across Yahoo’s transition to cloud-native AI platforms.
 
-**2024**
-- Multi AI Agent Systems with CrewAI (DeepLearning.AI)
-- Knowledge Graphs for RAG (DeepLearning.AI)
-- AI Agentic Design Patterns with AutoGen (DeepLearning.AI)
-- Functions, Tools and Agents with LangChain (DeepLearning.AI)
+Mentored researchers and engineers in AI/ML experimentation, productionization, and scientific rigor.
 
-**2023**
-- Large Language Models: Foundation Models from the Ground Up (edX/Databricks)
-- Large Language Models: Application through Production (edX/Databricks)
-- LLM Bootcamp (FSDL, In-Person)
+Regularly reviewed academic and industry papers; served as conference reviewer (ACL, ICDCS, SRDS).
 
-## Leadership & Communication
+Selected Patents
 
-### Mentoring & Team Leadership
-- **Junior Researcher Development**: Mentored and coached junior researchers across multiple Yahoo teams
-- **Cross-functional Collaboration**: Led integrated product, engineering, strategy discussions for enterprise AI initiatives
-- **Knowledge Transfer**: Successfully transferred complex research innovations to production engineering teams
+Systems and methods for automatically adding text content to generated images (USPTO App. 18/512,871, 2025)
 
-### Technical Communication
-- **Conference Presentations**: Delivered research findings at 15+ international AI/ML conferences (NeurIPS, ICML, MLSys, ACL)
-- **Industry Speaking**: Presented at Hadoop Summit, @Scale, and other major technical conferences
-- **Academic Publishing**: 15+ peer-reviewed publications with 400+ total citations in distributed systems and ML
+Method and system for webpage classification and content delivery (USPTO App. 18/365,941, 2024)
 
-### Professional Service
-- **Apache Committer**: Apache Omid project maintainer and committer
-- **Conference Reviewer**: IEEE ICDCS, ACM Middleware, VLDB Journal, and other top-tier venues
-- **Open Source**: Active maintainer of mdbook-bib (Rust bibliography management tool)
+Professional Engagement
 
-## Languages
-- **Spanish**: Native
-- **English**: Fluent
-- **French**: Intermediate
-- **Catalan**: Intermediate
+Conferences: Speaker at NeurIPS, ICML, MLSys, SIGKDD.
+
+Community: Apache Committer, Open-source project maintainer (mdbook-bib).
+
+Languages: English (Proficient), Spanish (Native), French (Intermediate).

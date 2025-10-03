@@ -2,13 +2,14 @@
 
 import os
 import tempfile
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from cv_writer_mcp.conversion import MD2LaTeXAgent
-from cv_writer_mcp.conversion.models import MarkdownToLaTeXRequest, MarkdownToLaTeXResponse
+from cv_writer_mcp.conversion.models import (
+    MarkdownToLaTeXRequest,
+)
 from cv_writer_mcp.models import CompletionStatus
 
 
@@ -24,7 +25,7 @@ class TestMD2LaTeXAgent:
         with patch("cv_writer_mcp.conversion.md2latex_agent.load_agent_config") as mock_load_config, \
              patch("cv_writer_mcp.conversion.md2latex_agent.read_text_file") as mock_read_file, \
              patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class:
-            
+
             # Mock config
             mock_config = {
                 "agent_metadata": {"model": "gpt-4", "name": "test", "output_type": "LaTeXOutput"},
@@ -32,16 +33,16 @@ class TestMD2LaTeXAgent:
                 "prompt_template": "Test prompt: {markdown_content}"
             }
             mock_load_config.return_value = mock_config
-            
+
             # Mock file reading
             mock_read_file.return_value = "test content"
-            
+
             # Mock agent creation
             mock_agent = MagicMock()
             mock_agent_class.return_value = mock_agent
-            
+
             agent = MD2LaTeXAgent(api_key="test-key")
-            
+
             assert agent.api_key == "test-key"
             assert agent.model == "gpt-4"
             assert agent.agent is not None
@@ -62,7 +63,7 @@ class TestMD2LaTeXAgent:
              patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class, \
              patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner, \
              patch("pathlib.Path.write_text") as mock_write:
-            
+
             # Mock config
             mock_config = {
                 "agent_metadata": {"model": "gpt-4", "name": "test", "output_type": "LaTeXOutput"},
@@ -70,23 +71,23 @@ class TestMD2LaTeXAgent:
                 "prompt_template": "Test prompt: {markdown_content}"
             }
             mock_load_config.return_value = mock_config
-            
+
             # Mock file reading
             mock_read_file.return_value = "test content"
-            
+
             # Mock agent creation
             mock_agent = MagicMock()
             mock_agent_class.return_value = mock_agent
-            
+
             # Mock runner result
             mock_result = MagicMock()
             mock_result.final_output = MagicMock()
             mock_result.final_output.latex_content = "\\documentclass{article}\n\\begin{document}\nTest\n\\end{document}"
             mock_result.final_output.conversion_notes = "Successfully converted"
             mock_runner.run = AsyncMock(return_value=mock_result)
-            
+
             agent = MD2LaTeXAgent(api_key="test-key")
-            
+
             request = MarkdownToLaTeXRequest(
                 markdown_content="# Test CV\n\nSome content",
                 output_filename="test.tex",
@@ -106,7 +107,7 @@ class TestMD2LaTeXAgent:
              patch("cv_writer_mcp.conversion.md2latex_agent.read_text_file") as mock_read_file, \
              patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class, \
              patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner:
-            
+
             # Mock config
             mock_config = {
                 "agent_metadata": {"model": "gpt-4", "name": "test", "output_type": "LaTeXOutput"},
@@ -114,23 +115,23 @@ class TestMD2LaTeXAgent:
                 "prompt_template": "Test prompt: {markdown_content}"
             }
             mock_load_config.return_value = mock_config
-            
+
             # Mock file reading
             mock_read_file.return_value = "test content"
-            
+
             # Mock agent creation
             mock_agent = MagicMock()
             mock_agent_class.return_value = mock_agent
-            
+
             # Mock runner result with empty content
             mock_result = MagicMock()
             mock_result.final_output = MagicMock()
             mock_result.final_output.latex_content = ""
             mock_result.final_output.conversion_notes = "No content generated"
             mock_runner.run = AsyncMock(return_value=mock_result)
-            
+
             agent = MD2LaTeXAgent(api_key="test-key")
-            
+
             request = MarkdownToLaTeXRequest(
                 markdown_content="# Test CV\n\nSome content",
                 output_filename="test.tex",
@@ -149,7 +150,7 @@ class TestMD2LaTeXAgent:
              patch("cv_writer_mcp.conversion.md2latex_agent.read_text_file") as mock_read_file, \
              patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class, \
              patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner:
-            
+
             # Mock config
             mock_config = {
                 "agent_metadata": {"model": "gpt-4", "name": "test", "output_type": "LaTeXOutput"},
@@ -157,19 +158,19 @@ class TestMD2LaTeXAgent:
                 "prompt_template": "Test prompt: {markdown_content}"
             }
             mock_load_config.return_value = mock_config
-            
+
             # Mock file reading
             mock_read_file.return_value = "test content"
-            
+
             # Mock agent creation
             mock_agent = MagicMock()
             mock_agent_class.return_value = mock_agent
-            
+
             # Mock runner to raise exception
             mock_runner.run = AsyncMock(side_effect=Exception("Test error"))
-            
+
             agent = MD2LaTeXAgent(api_key="test-key")
-            
+
             request = MarkdownToLaTeXRequest(
                 markdown_content="# Test CV\n\nSome content",
                 output_filename="test.tex",

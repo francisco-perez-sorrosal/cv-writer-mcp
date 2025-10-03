@@ -16,15 +16,15 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from .conversion import MD2LaTeXAgent
 from .compilation import LaTeXExpert
-from .style import PDFStyleCoordinator
-from .utils import read_text_file
-from .logger import LogConfig, LogLevel, configure_logger
 from .compilation.models import CompileLaTeXRequest, CompileLaTeXResponse, LaTeXEngine
+from .conversion import MD2LaTeXAgent
 from .conversion.models import MarkdownToLaTeXRequest, MarkdownToLaTeXResponse
-from .style.models import PDFAnalysisRequest, PDFAnalysisResponse
+from .logger import LogConfig, LogLevel, configure_logger
 from .models import CompletionStatus, HealthStatusResponse, ServerConfig
+from .style import PDFStyleCoordinator
+from .style.models import PDFAnalysisRequest
+from .utils import read_text_file
 
 # Load environment variables
 load_dotenv()
@@ -145,7 +145,7 @@ def setup_mcp_server(
             )
 
             # Convert markdown to LaTeX
-            return await cv_converter.convert(request)            
+            return await cv_converter.convert(request)
 
         except Exception as e:
             logger.error(f"Error in markdown_to_latex: {e}")
@@ -510,18 +510,18 @@ def compile_latex(
 @app.command()
 def fix_style(
     pdf_file: str = typer.Option(
-        "./output/to_improve_style.pdf", 
-        "--pdf", "-p", 
+        "./output/to_improve_style.pdf",
+        "--pdf", "-p",
         help="Path to the PDF file to analyze"
     ),
     tex_file: str = typer.Option(
-        "./output/to_improve_style.tex", 
-        "--tex", "-t", 
+        "./output/to_improve_style.tex",
+        "--tex", "-t",
         help="Path to the LaTeX source file"
     ),
     output_file: str = typer.Option(
-        "improved.tex", 
-        "--output", "-o", 
+        "improved.tex",
+        "--output", "-o",
         help="Output filename for improved LaTeX file"
     ),
     debug: bool = typer.Option(False, "--debug", help="Run in debug mode"),
@@ -540,11 +540,11 @@ def fix_style(
     # Check if input files exist
     pdf_path = Path(pdf_file)
     tex_path = Path(tex_file)
-    
+
     if not pdf_path.exists():
         console.print(f"[red]❌ Error: PDF file not found at '{pdf_file}'[/red]")
         raise typer.Exit(1)
-    
+
     if not tex_path.exists():
         console.print(f"[red]❌ Error: LaTeX file not found at '{tex_file}'[/red]")
         raise typer.Exit(1)
@@ -583,7 +583,7 @@ def fix_style(
         )
 
         console.print("[blue]🔍 Starting PDF analysis and LaTeX improvement...[/blue]")
-        
+
         # Run the analysis
         response = loop.run_until_complete(coordinator.analyze_and_improve(request))
 

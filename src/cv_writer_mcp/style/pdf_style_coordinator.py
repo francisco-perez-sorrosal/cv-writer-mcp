@@ -1,16 +1,15 @@
 """Coordinator for PDF style analysis using two specialized agents."""
 
-import asyncio
 import os
 from pathlib import Path
 
 from loguru import logger
 
+from ..models import CompletionStatus
+from ..utils import read_text_file
 from .formatting_agent import FormattingAgent
 from .models import PDFAnalysisRequest, PDFAnalysisResponse
 from .page_capture_agent import PageCaptureAgent, PageCaptureRequest
-from ..models import CompletionStatus
-from ..utils import read_text_file
 
 
 class PDFStyleCoordinator:
@@ -22,7 +21,7 @@ class PDFStyleCoordinator:
             raise ValueError("OpenAI API key is required. Set OPENAI_API_KEY environment variable.")
 
         self.model = model or "gpt-5-mini"
-        
+
         # Initialize both agents
         self.page_capture_agent = PageCaptureAgent(api_key=self.api_key, model=self.model)
         self.formatting_agent = FormattingAgent(api_key=self.api_key, model=self.model)
@@ -46,7 +45,7 @@ class PDFStyleCoordinator:
             # Validate file paths
             pdf_path = Path(request.pdf_file_path)
             tex_path = Path(request.tex_file_path)
-            
+
             if not pdf_path.exists() or not tex_path.exists():
                 missing_files = []
                 if not pdf_path.exists():
@@ -68,9 +67,9 @@ class PDFStyleCoordinator:
                 pdf_file_path=str(pdf_path.absolute()),
                 num_pages=None  # Let the tool determine actual page count
             )
-            
+
             capture_response = await self.page_capture_agent.capture_and_analyze(capture_request)
-            
+
             if capture_response.status != CompletionStatus.SUCCESS:
                 return PDFAnalysisResponse(
                     status=CompletionStatus.FAILED,
@@ -82,7 +81,7 @@ class PDFStyleCoordinator:
 
             # Step 3: Implement LaTeX fixes
             logger.info("Step 2: Implementing LaTeX fixes")
-            
+
             # Combine visual analysis results
             visual_analysis_summary = f"""
             PAGES ANALYZED: {capture_response.pages_analyzed}
@@ -91,7 +90,7 @@ class PDFStyleCoordinator:
             VISUAL ISSUES FOUND:
             {chr(10).join(f"- {issue}" for issue in capture_response.visual_issues)}
             """
-            
+
             fix_output = await self.formatting_agent.implement_fixes(
                 latex_content=latex_content,
                 visual_analysis_results=visual_analysis_summary,
@@ -115,7 +114,7 @@ class PDFStyleCoordinator:
             output_path.write_text(fix_output.improved_latex_content, encoding="utf-8")
 
             improved_tex_url = f"cv-writer://tex/{output_filename}"
-            
+
             # Create comprehensive message
             message = f"""Successfully analyzed PDF and improved LaTeX: {output_filename}
             

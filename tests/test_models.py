@@ -3,8 +3,15 @@
 import pytest
 from pydantic import ValidationError
 
-from cv_writer_mcp.compilation.models import CompileLaTeXRequest, CompileLaTeXResponse, LaTeXEngine
-from cv_writer_mcp.conversion.models import MarkdownToLaTeXRequest, MarkdownToLaTeXResponse
+from cv_writer_mcp.compilation.models import (
+    CompileLaTeXRequest,
+    CompileLaTeXResponse,
+    LaTeXEngine,
+)
+from cv_writer_mcp.conversion.models import (
+    MarkdownToLaTeXRequest,
+    MarkdownToLaTeXResponse,
+)
 from cv_writer_mcp.models import CompletionStatus, HealthStatusResponse, ServerConfig
 
 

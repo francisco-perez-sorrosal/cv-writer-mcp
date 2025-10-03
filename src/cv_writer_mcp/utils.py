@@ -3,7 +3,7 @@
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 from loguru import logger
@@ -49,8 +49,8 @@ def create_timestamped_version(tex_file_path: Path) -> Path:
 
 
 def read_text_file(
-    file_path: Path, 
-    description: str = "file", 
+    file_path: Path,
+    description: str = "file",
     expected_extension: str | None = None
 ) -> str:
     """Read text content from a file with proper error handling and logging.
@@ -77,7 +77,7 @@ def read_text_file(
     if expected_extension:
         if not expected_extension.startswith('.'):
             expected_extension = f".{expected_extension}"
-        
+
         if file_path.suffix.lower() != expected_extension.lower():
             raise ValueError(
                 f"{description.capitalize()} must have {expected_extension} extension, "
@@ -96,7 +96,7 @@ def read_text_file(
         raise
 
 
-def load_agent_config(config_file: str) -> Dict[str, Any]:
+def load_agent_config(config_file: str) -> dict[str, Any]:
     """Load agent configuration from a YAML file with multi-path search.
 
     Searches for configuration files in the following order:

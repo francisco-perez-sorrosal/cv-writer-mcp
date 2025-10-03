@@ -11,7 +11,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 
 from cv_writer_mcp.logger import LogLevel
 
@@ -82,7 +82,7 @@ def get_output_type_class(output_type_name: str):
     # Import package-specific models
     from .compilation.models import CompilationErrorOutput, CompilerAgentOutput
     from .conversion.models import LaTeXOutput
-    from .style.models import FormattingOutput, PDFAnalysisOutput, PageCaptureOutput
+    from .style.models import FormattingOutput, PageCaptureOutput, PDFAnalysisOutput
 
     # Centralized mapping of output type names to actual classes
     output_type_mapping = {

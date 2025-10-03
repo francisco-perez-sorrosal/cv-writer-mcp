@@ -5,12 +5,11 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from agents import function_tool
 from loguru import logger
 
+from ..models import CompletionStatus, ServerConfig
 from .compiler_agent import CompilationAgent
 from .error_agent import CompilationErrorAgent
-from ..utils import read_text_file
 from .models import (
     CompilationDiagnostics,
     CompileLaTeXRequest,
@@ -18,7 +17,6 @@ from .models import (
     LaTeXEngine,
     OrchestrationResult,
 )
-from ..models import CompletionStatus, ServerConfig
 
 
 class LaTeXExpert:
@@ -76,48 +74,6 @@ class LaTeXExpert:
         )
         return validation_result
 
-    def _extract_log_tail(
-        self, tex_file_path: Path, pattern: str = "[Loading MPS to PDF converter"
-    ) -> str:
-        """Extract log content from the a pattern line to the end of the file.
-
-        Args:
-            tex_file_path: Path to the .tex file
-            pattern: Pattern to search for in the log file
-
-        Returns:
-            String containing the log content from the pattern line to the end, or error message
-        """
-        log_file = tex_file_path.with_suffix(".log")
-
-        if not log_file:
-            return "No logs found"
-
-        try:
-            with open(log_file, encoding="utf-8", errors="ignore") as f:
-                all_lines = f.readlines()
-
-                # Look for the line that starts with "[Loading MPS to PDF converter"
-                pattern_idx = None
-                for i, line in enumerate(all_lines):
-                    if line.strip().startswith(pattern):
-                        pattern_idx = i
-                        break
-
-                if pattern_idx is not None:
-                    # Extract from the MPS converter line to the end
-                    tail_lines = all_lines[pattern_idx:]
-                    logger.info(
-                        f"Found pattern line at index {pattern_idx}, extracting {len(tail_lines)} lines"
-                    )
-                else:
-                    # Fallback to entire log file if MPS converter line not found
-                    logger.warning("Pattern line not found, using entire log file")
-                    tail_lines = all_lines
-
-                return "".join(tail_lines)
-        except Exception as e:
-            return f"Error reading log file {log_file}: {str(e)}"
 
     def check_latex_installation(
         self, engine: LaTeXEngine = LaTeXEngine.PDFLATEX
@@ -180,14 +136,6 @@ class LaTeXExpert:
                 max_attempts=request.max_attempts,
                 user_instructions=request.user_instructions,
             )
-
-            # Add compilation metadata
-            metadata = {
-                "tex_filename": request.tex_filename,
-                "output_filename": output_filename,
-                "latex_engine": request.latex_engine.value,
-                "compilation_time": compilation_result.compilation_time,
-            }
 
             if compilation_result.status != CompletionStatus.SUCCESS:
                 return CompileLaTeXResponse(
@@ -275,10 +223,10 @@ class LaTeXExpert:
                 else:
                     # Failed compilation: - Log the result (counters already incremented by compiler_agent)
                     # Log complete compilation result information using string representation
-                    logger.warning(f"--------------------------------")
+                    logger.warning("--------------------------------")
                     logger.warning(f"Compilation failed (Attempt {attempt})")
                     logger.warning(f"{compilation_result}")
-                    logger.warning(f"--------------------------------")
+                    logger.warning("--------------------------------")
 
                     if attempt < max_attempts:
                         # Step 2: Fix errors with error fixing agent
@@ -286,32 +234,12 @@ class LaTeXExpert:
                             f"Attempt to fix errors with fixing agent (Attempt {attempt})"
                         )
 
-                        # Extract focused error context with validation
-                        error_context = (
-                            self._fixing_agent._extract_focused_error_context(
-                                current_tex_path, compilation_result.log_output or ""
-                            )
-                        )
-                        logger.info(
-                            f"Extracted focused error context: {error_context['error_count']} errors, {error_context['warning_count']} warnings"
-                        )
-
-                        # Use the validated log excerpt or fallback to basic extraction
-                        if (
-                            error_context["validation_status"] == "success"
-                            and error_context["raw_log_excerpt"]
-                        ):
-                            log_content = error_context["raw_log_excerpt"]
-                        else:
-                            # Fallback to original method if enhanced extraction fails
-                            log_content = self._extract_log_tail(current_tex_path)
-                            logger.warning("Using fallback log extraction method")
-
                         try:
                             # Use the error fixing agent to fix errors
+                            # Pass compilation_result directly which contains errors_found and exit_code
                             fixing_output, corrected_file_path = (
                                 await self._fixing_agent.fix_errors(
-                                    current_tex_path, error_context, log_content
+                                    current_tex_path, compilation_result
                                 )
                             )
 

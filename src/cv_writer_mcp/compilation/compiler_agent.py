@@ -11,15 +11,15 @@ from typing import Any
 from agents import Agent, Runner
 from loguru import logger
 
+from ..models import CompletionStatus, get_output_type_class
+from ..utils import load_agent_config
 from .models import (
-    CompilerAgentOutput,
     CompilationDiagnostics,
+    CompilerAgentOutput,
     LaTeXEngine,
     OrchestrationResult,
 )
-from ..models import CompletionStatus, get_output_type_class
 from .tools import latex2pdf_tool
-from ..utils import load_agent_config
 
 
 class CompilationAgent:
@@ -82,7 +82,7 @@ class CompilationAgent:
         output_type_class = get_output_type_class(
             self.agent_config["agent_metadata"]["output_type"]
         )
-        
+
         return Agent(
             name=self.agent_config["agent_metadata"]["name"],
             instructions=self.agent_config["instructions"],
@@ -142,13 +142,13 @@ class CompilationAgent:
                 )
 
                 result_data = json.loads(json_str)
+                is_success = result_data.get("success", False)
                 agent_output = CompilerAgentOutput(
-                    status=CompletionStatus.SUCCESS if result_data.get("success", False) else CompletionStatus.FAILED,
+                    status=CompletionStatus.SUCCESS if is_success else CompletionStatus.FAILED,
                     compilation_time=result_data.get("compilation_time", 0.0),
-                    message=result_data.get("error_message"),
-                    log_summary=result_data.get("log_summary", ""),
-                    engine_used=result_data.get("engine_used", engine.value),
-                    output_path=result_data.get("output_path", ""),
+                    compilation_summary=result_data.get("compilation_summary", result_data.get("log_summary", "")),
+                    errors_found=result_data.get("errors_found") if not is_success else None,
+                    output_path=result_data.get("output_path") if is_success else None,
                 )
 
                 logger.info("✅ Successfully parsed JSON to CompilationAgentOutput")
@@ -157,8 +157,8 @@ class CompilationAgent:
                     {
                         "success": agent_output.status == CompletionStatus.SUCCESS,
                         "compilation_time": agent_output.compilation_time,
-                        "has_message": bool(agent_output.message),
-                        "log_summary_length": len(agent_output.log_summary or ""),
+                        "has_summary": bool(agent_output.compilation_summary),
+                        "errors_count": len(agent_output.errors_found) if agent_output.errors_found else 0,
                     },
                 )
                 return agent_output
@@ -170,10 +170,9 @@ class CompilationAgent:
             agent_output = CompilerAgentOutput(
                 status=CompletionStatus.FAILED,
                 compilation_time=0.0,
-                message="Failed to parse compilation result - no valid JSON found",
-                log_summary=output_text,
-                engine_used=engine.value,
-                output_path="",
+                compilation_summary="Failed to parse compilation result - no valid JSON found",
+                errors_found=[output_text] if output_text else None,
+                output_path=None,
             )
 
             self._log_agent_diagnostics(
@@ -196,17 +195,17 @@ class CompilationAgent:
                 },
             )
 
+            raw_output = (
+                str(compilation_result.final_output)
+                if hasattr(compilation_result, "final_output")
+                else str(compilation_result)
+            )
             agent_output = CompilerAgentOutput(
                 status=CompletionStatus.FAILED,
                 compilation_time=0.0,
-                message=f"JSON parsing failed: {str(e)}",
-                log_summary=(
-                    str(compilation_result.final_output)
-                    if hasattr(compilation_result, "final_output")
-                    else str(compilation_result)
-                ),
-                engine_used=engine.value,
-                output_path="",
+                compilation_summary=f"JSON parsing failed: {str(e)}",
+                errors_found=[raw_output] if raw_output else None,
+                output_path=None,
             )
             return agent_output
 
@@ -221,10 +220,9 @@ class CompilationAgent:
             agent_output = CompilerAgentOutput(
                 status=CompletionStatus.FAILED,
                 compilation_time=0.0,
-                message=f"Parsing exception: {str(e)}",
-                log_summary=str(compilation_result),
-                engine_used=engine.value,
-                output_path="",
+                compilation_summary=f"Parsing exception: {str(e)}",
+                errors_found=[str(compilation_result)] if compilation_result else None,
+                output_path=None,
             )
             return agent_output
 
@@ -276,15 +274,17 @@ class CompilationAgent:
 
                 # Use the actual PDF path from the compilation result if available
                 actual_output_path = output_path
-                if hasattr(agent_output, "output_path") and agent_output.output_path:
+                if agent_output.output_path:
                     actual_output_path = Path(agent_output.output_path)
 
                 return OrchestrationResult(
                     status=CompletionStatus.SUCCESS,
                     compilation_time=agent_output.compilation_time,
-                    log_output=agent_output.log_summary,
+                    log_output=agent_output.compilation_summary,
                     output_path=actual_output_path,
-                    message=agent_output.message,
+                    message=agent_output.compilation_summary,
+                    errors_found=None,
+                    exit_code=0,
                 )
             else:
                 # Track failed compilation
@@ -292,9 +292,11 @@ class CompilationAgent:
 
                 return OrchestrationResult(
                     status=CompletionStatus.FAILED,
-                    message=agent_output.message,
+                    message=agent_output.compilation_summary,
                     compilation_time=agent_output.compilation_time,
-                    log_output=agent_output.log_summary,
+                    log_output=agent_output.compilation_summary,
+                    errors_found=agent_output.errors_found,
+                    exit_code=1,  # Non-zero exit code indicates failure
                 )
 
         except Exception as e:
@@ -304,4 +306,6 @@ class CompilationAgent:
                 status=CompletionStatus.FAILED,
                 message=f"Compilation failed with exception: {str(e)}",
                 compilation_time=0.0,
+                errors_found=[str(e)],
+                exit_code=1,
             )

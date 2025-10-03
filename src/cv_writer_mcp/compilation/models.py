@@ -73,15 +73,25 @@ class OrchestrationResult(BaseModel):
     log_output: str = ""
     message: str | None = None
     compilation_time: float = 0.0
+    errors_found: list[str] | None = None
+    exit_code: int = 0
 
     def __str__(self) -> str:
         lines = [
             "LaTeX Compilation Result:",
             f"  Status: {self.status.value}",
             f"  Compilation Time: {self.compilation_time:.2f} seconds",
+            f"  Exit Code: {self.exit_code}",
             f"  Message: {self.message}",
             f"  Output Path: {self.output_path}",
         ]
+        if self.errors_found:
+            lines.append(f"  Errors Found: {len(self.errors_found)}")
+            for i, error in enumerate(self.errors_found[:3], 1):
+                error_preview = error[:100] + "..." if len(error) > 100 else error
+                lines.append(f"    {i}. {error_preview}")
+            if len(self.errors_found) > 3:
+                lines.append(f"    ... and {len(self.errors_found) - 3} more")
         if self.log_output:
             log_preview = (
                 self.log_output[:200] + "..."
@@ -95,33 +105,38 @@ class OrchestrationResult(BaseModel):
 class CompilerAgentOutput(BaseModel):
     """Structured output from the LaTeX compilation agent."""
 
-    status: CompletionStatus = Field(..., description="Whether the compilation was successful")
+    status: CompletionStatus = Field(
+        ..., description='Compilation status: "success" (exit code 0) or "failure" (exit code > 0)'
+    )
     compilation_time: float = Field(
-        ..., description="Time taken for compilation in seconds"
+        ..., description="Total duration in seconds"
     )
-    message: str | None = Field(
-        None, description="Status message with compilation details or error information"
+    compilation_summary: str = Field(
+        ..., description="What happened during compilation (general outcome, warnings if present)"
     )
-    log_summary: str = Field("", description="Summary of compilation log output")
-    engine_used: str = Field(..., description="LaTeX engine that was used")
-    output_path: str = Field(..., description="Path where the PDF was generated")
+    errors_found: list[str] | None = Field(
+        None, description="List of error messages from .log if failed, null if successful"
+    )
+    output_path: str | None = Field(
+        None, description="Full PDF path if successful, null if failed"
+    )
 
     def __str__(self) -> str:
         lines = [
             "Compilation Agent Output:",
             f"  Status: {self.status.value}",
             f"  Compilation Time: {self.compilation_time:.2f} seconds",
-            f"  Message: {self.message}",
-            f"  Engine Used: {self.engine_used}",
-            f"  Output Path: {self.output_path}",
+            f"  Summary: {self.compilation_summary}",
         ]
-        if self.log_summary:
-            log_preview = (
-                self.log_summary[:300] + "..."
-                if len(self.log_summary) > 300
-                else self.log_summary
-            )
-            lines.append(f"  Log Summary: {log_preview}")
+        if self.output_path:
+            lines.append(f"  Output Path: {self.output_path}")
+        if self.errors_found:
+            lines.append(f"  Errors Found: {len(self.errors_found)}")
+            for i, error in enumerate(self.errors_found[:3], 1):
+                error_preview = error[:100] + "..." if len(error) > 100 else error
+                lines.append(f"    {i}. {error_preview}")
+            if len(self.errors_found) > 3:
+                lines.append(f"    ... and {len(self.errors_found) - 3} more")
         return "\n".join(lines)
 
 

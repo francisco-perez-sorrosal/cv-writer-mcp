@@ -14,6 +14,9 @@ class LaTeXOutput(BaseModel):
     conversion_notes: str = Field(
         description="Notes about the conversion process and any important considerations"
     )
+    recommendations: str = Field(
+        description="Actionable recommendations for the user to improve the effectiveness of the CV"
+    )
 
 
 class MarkdownToLaTeXRequest(BaseModel):

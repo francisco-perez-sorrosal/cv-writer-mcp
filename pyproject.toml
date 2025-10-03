@@ -36,6 +36,7 @@ mypy = "*"
 pytest = "*"
 pytest-asyncio = "*"
 pytest-cov = "*"
+playwright = ">=1.55.1,<2"
 
 [tool.pixi.pypi-dependencies]
 cv-writer-mcp = { path = ".", editable = true }
@@ -58,14 +59,9 @@ serve = "python -m cv_writer_mcp start-mcps"
 
 # Partial workflow exercised by commands
 check-latex = "python -m cv_writer_mcp check-latex"
-convert-markdown = "python -m cv_writer_mcp convert-markdown --debug input/schwab_cv_tailoring.md --output cv_schwab.tex"
-my-convert-markdown = "python -m cv_writer_mcp convert-markdown --debug input/schwab_cv_tailoring.md --output my_cv_schwab.tex --template my_template.tex"
-compile-schwab = "python -m cv_writer_mcp compile-latex --debug output/cv_schwab.tex --output cv_schwab.pdf"
+convert-markdown = "python -m cv_writer_mcp convert-markdown --debug input/schwab_cv_tailoring.md --output my_cv_schwab.tex --template moderncv_template.tex"
 compile-latex = "python -m cv_writer_mcp compile-latex --debug output/my_cv_schwab.tex --output my_cv_schwab.pdf"
-compile-latex2 = "python -m cv_writer_mcp compile-latex --debug output/improved.tex --output improved_fixed.pdf"
-fix-style = "python -m cv_writer_mcp fix-style --debug"
-fix-style-schwab = "python -m cv_writer_mcp fix-style -p output/to_improve_schwab.pdf -t output/to_improve_schwab.tex -o to_improve_schwab_fixed.tex --debug"
-compile-styled-schwab = "python -m cv_writer_mcp compile-latex --debug output/cv_schwab_fixed.tex --output cv_schwab_styled.pdf"
+fix-style = "python -m cv_writer_mcp fix-style -p output/to_improve_schwab.pdf -t output/to_improve_schwab.tex -o to_improve_schwab_fixed.tex --debug"
 
 
 [tool.ruff]

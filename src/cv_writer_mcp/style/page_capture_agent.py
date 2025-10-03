@@ -4,13 +4,13 @@ import json
 import os
 from pathlib import Path
 
-from loguru import logger
 from agents import Agent, Runner
+from loguru import logger
 
-from .models import PageCaptureRequest, PageCaptureResponse
-from .tools import pdf_computer_use_tool
 from ..models import CompletionStatus
 from ..utils import load_agent_config
+from .models import PageCaptureRequest, PageCaptureResponse
+from .tools import pdf_computer_use_tool
 
 
 class PageCaptureAgent:
@@ -27,11 +27,11 @@ class PageCaptureAgent:
     def _create_agent(self) -> Agent:
         """Create page capture agent."""
         from ..models import get_output_type_class
-        
+
         output_type_class = get_output_type_class(
             self.agent_config["agent_metadata"]["output_type"]
         )
-        
+
         return Agent(
             name=self.agent_config["agent_metadata"]["name"],
             instructions=self.agent_config["instructions"],
@@ -47,14 +47,14 @@ class PageCaptureAgent:
             pdf_path = Path(request.pdf_file_path)
             if not pdf_path.exists():
                 return PageCaptureResponse(
-                    status=CompletionStatus.FAILED, 
+                    status=CompletionStatus.FAILED,
                     message=f"PDF file not found: {pdf_path}"
                 )
 
             agent = self._create_agent()
             prompt = f"Capture and analyze all pages of the PDF file: {pdf_path}"
             result = await Runner.run(agent, prompt)
-            
+
             # Extract results - try final output first, then tool results
             if hasattr(result, 'final_output') and result.final_output:
                 output = result.final_output
@@ -67,7 +67,7 @@ class PageCaptureAgent:
                         analysis_summary=f"Analyzed {output.pages_analyzed} pages. Found {len(getattr(output, 'visual_issues', []))} visual issues.",
                         message=f"Successfully analyzed {output.pages_analyzed} pages."
                     )
-            
+
             # Fallback: extract from tool call results
             tool_data = self._extract_tool_results(result)
             if tool_data:
@@ -91,12 +91,12 @@ class PageCaptureAgent:
                 status=CompletionStatus.FAILED,
                 message=f"Analysis failed: {str(e)}"
             )
-    
+
     def _extract_tool_results(self, result) -> dict | None:
         """Extract results from tool call messages."""
         if not hasattr(result, 'messages') or not result.messages:
             return None
-            
+
         for message in result.messages:
             if hasattr(message, 'tool_call_results'):
                 for tool_result in message.tool_call_results:

@@ -5,11 +5,10 @@ from pathlib import Path
 
 from agents import Agent, Runner
 from loguru import logger
-from pydantic import BaseModel, Field
 
-from .models import LaTeXOutput, MarkdownToLaTeXRequest, MarkdownToLaTeXResponse
-from ..models import CompletionStatus, ServerConfig, get_output_type_class
+from ..models import CompletionStatus, get_output_type_class
 from ..utils import load_agent_config, read_text_file
+from .models import LaTeXOutput, MarkdownToLaTeXRequest, MarkdownToLaTeXResponse
 
 
 class MD2LaTeXAgent:
@@ -47,7 +46,8 @@ class MD2LaTeXAgent:
 
     def _load_resources(self) -> None:
         """Load required template and documentation files."""
-        base_path = Path(__file__).parent.parent.parent
+        # Go up from src/cv_writer_mcp/conversion/ to project root
+        base_path = Path(__file__).parent.parent.parent.parent
 
         # Load LaTeX template
         template_path = base_path / "context" / "latex" / self.template_name
@@ -71,7 +71,7 @@ class MD2LaTeXAgent:
         output_type_class = get_output_type_class(
             self.agent_config["agent_metadata"]["output_type"]
         )
-        
+
         self.agent = Agent(
             name=self.agent_config["agent_metadata"]["name"],
             instructions=agent_instructions,

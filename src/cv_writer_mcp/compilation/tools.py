@@ -41,11 +41,29 @@ async def latex2pdf_tool(
 
         output_text = stdout.decode("utf-8", errors="ignore")
 
-        # Check if PDF was created using both file existence and log analysis
+        # Check if PDF was created (note: pdflatex can create PDF even with errors)
         pdf_path = Path(output_dir) / f"{Path(tex_file_path).stem}.pdf"
-        compilation_success = pdf_path.exists() and pdf_path.stat().st_size > 0
+        pdf_created = pdf_path.exists() and pdf_path.stat().st_size > 0
 
-        logger.info(f"Compilation success: {compilation_success}")
+        # True success means: PDF created AND exit code 0
+        compilation_success = pdf_created and process.returncode == 0
+
+        logger.info(
+            f"LaTeX execution: PDF created={pdf_created}, "
+            f"exit_code={process.returncode}, clean_success={compilation_success}"
+        )
+
+        # Read .log file if compilation failed - agent needs this for error extraction
+        log_file_content = ""
+        if process.returncode != 0:
+            log_file_path = Path(output_dir) / f"{Path(tex_file_path).stem}.log"
+            if log_file_path.exists():
+                try:
+                    with open(log_file_path, "r", encoding="utf-8", errors="ignore") as f:
+                        log_file_content = f.read()
+                    logger.info(f"Read .log file ({len(log_file_content)} chars) for error extraction")
+                except Exception as e:
+                    logger.warning(f"Could not read .log file: {e}")
 
         return json.dumps({
             "success": compilation_success,
@@ -53,12 +71,13 @@ async def latex2pdf_tool(
             "error_message": (
                 None
                 if compilation_success
-                else f"LaTeX compilation failed (exit code: {process.returncode})"
+                else f"LaTeX compilation had errors (exit code: {process.returncode})"
             ),
             "log_summary": output_text,
             "engine_used": command.split()[0],
-            "output_path": str(pdf_path) if compilation_success else "",
+            "output_path": str(pdf_path) if pdf_created else "",
             "return_code": process.returncode,
+            "log_file_content": log_file_content,  # Agent can extract errors from this
         })
 
     except Exception as e:
