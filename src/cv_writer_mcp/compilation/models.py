@@ -61,7 +61,8 @@ class CompileLaTeXResponse(BaseModel):
         None, description="Resource URI to access the generated PDF"
     )
     message: str | None = Field(
-        None, description="Status message with compilation details, error information, or other details"
+        None,
+        description="Status message with compilation details, error information, or other details",
     )
 
 
@@ -106,16 +107,17 @@ class CompilerAgentOutput(BaseModel):
     """Structured output from the LaTeX compilation agent."""
 
     status: CompletionStatus = Field(
-        ..., description='Compilation status: "success" (exit code 0) or "failure" (exit code > 0)'
+        ...,
+        description='Compilation status: "success" (exit code 0) or "failure" (exit code > 0)',
     )
-    compilation_time: float = Field(
-        ..., description="Total duration in seconds"
-    )
+    compilation_time: float = Field(..., description="Total duration in seconds")
     compilation_summary: str = Field(
-        ..., description="What happened during compilation (general outcome, warnings if present)"
+        ...,
+        description="What happened during compilation (general outcome, warnings if present)",
     )
     errors_found: list[str] | None = Field(
-        None, description="List of error messages from .log if failed, null if successful"
+        None,
+        description="List of error messages from .log if failed, null if successful",
     )
     output_path: str | None = Field(
         None, description="Full PDF path if successful, null if failed"
@@ -179,7 +181,8 @@ class CompilationErrorOutput(BaseModel):
     )
     total_fixes: int = Field(..., description="Total number of fixes applied")
     message: str | None = Field(
-        None, description="Status message with explanation of what was fixed, error details, or other information"
+        None,
+        description="Status message with explanation of what was fixed, error details, or other information",
     )
     remaining_issues: list[str] = Field(
         default_factory=list, description="Any remaining issues that couldn't be fixed"

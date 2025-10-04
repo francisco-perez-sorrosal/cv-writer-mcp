@@ -15,8 +15,8 @@ from cv_writer_mcp.compilation.models import (
 from cv_writer_mcp.models import CompletionStatus, ServerConfig
 
 
-class TestLaTeXCompiler:
-    """Test cases for LaTeXCompiler."""
+class TestLaTeXExpert:
+    """Test cases for LaTeXExpert."""
 
     def setup_method(self):
         """Set up test fixtures."""
@@ -53,9 +53,9 @@ class TestLaTeXCompiler:
             from cv_writer_mcp.compilation.models import OrchestrationResult
 
             mock_agent.return_value = OrchestrationResult(
-                success=True,
+                status=CompletionStatus.SUCCESS,
                 compilation_time=1.5,
-                error_message=None,
+                message=None,
                 output_path=self.config.output_dir / "test.pdf",
             )
 
@@ -70,10 +70,6 @@ class TestLaTeXCompiler:
 
             assert response.status == CompletionStatus.SUCCESS
             assert response.pdf_url == "cv-writer://pdf/test.pdf"
-            assert response.metadata["tex_filename"] == "test.tex"
-            assert response.metadata["output_filename"] == "test.pdf"
-            assert response.metadata["latex_engine"] == "pdflatex"
-            assert response.metadata["compilation_time"] == 1.5
 
     @pytest.mark.asyncio
     async def test_compile_latex_file_no_config(self):
@@ -117,7 +113,7 @@ class TestLaTeXCompiler:
             mock_compile.return_value = CompileLaTeXResponse(
                 status=CompletionStatus.FAILED,
                 pdf_url=None,
-                error_message="LaTeX compilation failed",
+                message="LaTeX compilation failed",
             )
 
             compiler = LaTeXExpert(config=self.config)
@@ -227,9 +223,9 @@ class TestLaTeXCompiler:
                 from cv_writer_mcp.compilation.models import OrchestrationResult
 
                 mock_agent.return_value = OrchestrationResult(
-                    success=True,
+                    status=CompletionStatus.SUCCESS,
                     compilation_time=1.0,
-                    error_message=None,
+                    message=None,
                     output_path=temp_path / "test.pdf",
                 )
 
@@ -266,9 +262,9 @@ class TestLaTeXCompiler:
                 from cv_writer_mcp.compilation.models import OrchestrationResult
 
                 mock_compile.return_value = OrchestrationResult(
-                    success=True,
+                    status=CompletionStatus.SUCCESS,
                     compilation_time=1.0,
-                    error_message=None,
+                    message=None,
                     output_path=temp_path / "test.pdf",
                 )
 
@@ -280,4 +276,3 @@ class TestLaTeXCompiler:
                 # Verify response
                 assert response.status == CompletionStatus.SUCCESS
                 assert response.pdf_url == "cv-writer://pdf/test.pdf"
-                assert "agent_response" not in response.metadata

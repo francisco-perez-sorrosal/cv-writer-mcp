@@ -22,8 +22,9 @@ from .conversion import MD2LaTeXAgent
 from .conversion.models import MarkdownToLaTeXRequest, MarkdownToLaTeXResponse
 from .logger import LogConfig, LogLevel, configure_logger
 from .models import CompletionStatus, HealthStatusResponse, ServerConfig
+from .orchestration import CVPipelineOrchestrator
+from .orchestration.models import CVGenerationResponse
 from .style import PDFStyleCoordinator
-from .style.models import PDFAnalysisRequest
 from .utils import read_text_file
 
 # Load environment variables
@@ -33,6 +34,8 @@ load_dotenv()
 mcp: FastMCP | None = None
 cv_converter: MD2LaTeXAgent | None = None
 latex_expert: LaTeXExpert | None = None
+style_coordinator: PDFStyleCoordinator | None = None
+orchestrator: CVPipelineOrchestrator | None = None
 config: ServerConfig | None = None
 
 app = typer.Typer(
@@ -110,12 +113,167 @@ def setup_mcp_server(
     server_config: ServerConfig, host: str = "localhost", port: int = 8000
 ) -> None:
     """Set up the FastMCP server with tools and HTTP endpoints."""
-    global mcp, cv_converter, latex_expert, config
+    global mcp, cv_converter, latex_expert, style_coordinator, orchestrator, config
 
     config = server_config
     cv_converter = MD2LaTeXAgent(api_key=config.openai_api_key)
     latex_expert = LaTeXExpert(config)
+    style_coordinator = PDFStyleCoordinator(api_key=config.openai_api_key)
+    orchestrator = CVPipelineOrchestrator(
+        md2latex_agent=cv_converter,
+        latex_expert=latex_expert,
+        style_coordinator=style_coordinator,
+        config=config,
+    )
     mcp = FastMCP("cv-writer-mcp", host=host, port=port)
+
+    # ========================================================================
+    # PRIMARY END-TO-END MCP TOOLS
+    # ========================================================================
+
+    @mcp.tool(structured_output=True)
+    async def generate_cv_from_markdown(
+        markdown_content: str = Field(..., description="Markdown CV content"),
+        output_filename: str | None = Field(None, description="Custom output filename"),
+        enable_style_improvement: bool = Field(
+            True, description="Enable style improvement phase"
+        ),
+        max_compile_attempts: int = Field(
+            3, description="Max compilation retry attempts"
+        ),
+        max_style_iterations: int = Field(
+            1, description="Max style improvement iterations"
+        ),
+        num_style_variants: int = Field(
+            1, description="Number of parallel style variants per iteration"
+        ),
+        enable_quality_validation: bool | None = Field(
+            None,
+            description="Enable quality judge (None=auto: enabled if num_variants>=2)",
+        ),
+    ) -> CVGenerationResponse:
+        """Complete CV generation: Markdown → LaTeX → PDF → Style → Final PDF.
+
+        This is the PRIMARY TOOL for end-to-end CV generation.
+
+        Smart Defaults (fast & cheap):
+        - Single style iteration (max_style_iterations=1)
+        - Single variant (num_style_variants=1)
+        - Judge disabled by default when num_variants=1 (save cost)
+        - Judge auto-enabled when num_variants>=2 (needed to pick best)
+
+        Usage Examples:
+        - Fast mode (default): Use defaults → ~3-4 LLM calls
+        - Quality mode: Set num_variants=2 → ~6-8 LLM calls (judge auto-enabled)
+        - Iterative mode: Set max_style_iterations=3, num_variants=2 → ~15-25 LLM calls
+
+        Args:
+            markdown_content: Markdown CV content to convert
+            output_filename: Custom output filename (optional)
+            enable_style_improvement: Enable style improvement phase (default: True)
+            max_compile_attempts: Max compilation attempts (default: 3)
+            max_style_iterations: Max style iterations (default: 1 for speed)
+            num_style_variants: Number of variants per iteration (default: 1 for cost)
+            enable_quality_validation: Enable quality judge (None=auto based on num_variants)
+
+        Returns:
+            CVGenerationResponse with status, URLs, and diagnostics
+        """
+        if not orchestrator:
+            return CVGenerationResponse(
+                status=CompletionStatus.FAILED,
+                pdf_url=None,
+                tex_url=None,
+                message="Server not initialized",
+                diagnostics_summary=None,
+            )
+
+        try:
+            result = await orchestrator.generate_cv_from_markdown(
+                markdown_content=markdown_content,
+                output_filename=output_filename,
+                enable_style_improvement=enable_style_improvement,
+                max_compile_attempts=max_compile_attempts,
+                max_style_iterations=max_style_iterations,
+                num_style_variants=num_style_variants,
+                enable_quality_validation=enable_quality_validation,
+            )
+
+            return orchestrator.to_response(result)
+
+        except Exception as e:
+            logger.error(f"Error in generate_cv_from_markdown: {e}")
+            return CVGenerationResponse(
+                status=CompletionStatus.FAILED,
+                pdf_url=None,
+                tex_url=None,
+                message=f"Pipeline failed: {str(e)}",
+                diagnostics_summary=None,
+            )
+
+    @mcp.tool(structured_output=True)
+    async def compile_and_improve_style(
+        tex_filename: str = Field(
+            ..., description="LaTeX filename to compile and improve"
+        ),
+        output_filename: str | None = Field(None, description="Custom output filename"),
+        max_compile_attempts: int = Field(3, description="Max compilation attempts"),
+        max_style_iterations: int = Field(1, description="Max style iterations"),
+        num_style_variants: int = Field(1, description="Number of style variants"),
+        enable_quality_validation: bool | None = Field(
+            None, description="Enable quality judge (None=auto)"
+        ),
+    ) -> CVGenerationResponse:
+        """Compile LaTeX and improve styling: LaTeX → PDF → Style → Final PDF.
+
+        Same smart defaults as generate_cv_from_markdown.
+        Judge auto-enabled when num_variants >= 2.
+
+        Args:
+            tex_filename: Name of the .tex file to compile
+            output_filename: Custom output filename (optional)
+            max_compile_attempts: Max compilation attempts (default: 3)
+            max_style_iterations: Max style iterations (default: 1)
+            num_style_variants: Number of variants (default: 1)
+            enable_quality_validation: Enable quality judge (None=auto)
+
+        Returns:
+            CVGenerationResponse with status, URLs, and diagnostics
+        """
+        if not orchestrator:
+            return CVGenerationResponse(
+                status=CompletionStatus.FAILED,
+                pdf_url=None,
+                tex_url=None,
+                message="Server not initialized",
+                diagnostics_summary=None,
+            )
+
+        try:
+            result = await orchestrator.compile_and_improve_style(
+                tex_filename=tex_filename,
+                output_filename=output_filename,
+                max_compile_attempts=max_compile_attempts,
+                max_style_iterations=max_style_iterations,
+                num_style_variants=num_style_variants,
+                enable_quality_validation=enable_quality_validation,
+            )
+
+            return orchestrator.to_response(result)
+
+        except Exception as e:
+            logger.error(f"Error in compile_and_improve_style: {e}")
+            return CVGenerationResponse(
+                status=CompletionStatus.FAILED,
+                pdf_url=None,
+                tex_url=None,
+                message=f"Pipeline failed: {str(e)}",
+                diagnostics_summary=None,
+            )
+
+    # ========================================================================
+    # DEBUG/TEST MCP TOOLS (Individual Phases)
+    # ========================================================================
 
     # MCP Tools
     @mcp.tool(structured_output=True)
@@ -159,7 +317,8 @@ def setup_mcp_server(
     @mcp.tool(structured_output=True)
     async def compile_latex_to_pdf(
         tex_filename: str = Field(..., description="Name of the .tex file to compile"),
-        output_filename: str = Field("", description="Custom output filename for PDF (optional)"
+        output_filename: str = Field(
+            "", description="Custom output filename for PDF (optional)"
         ),
         latex_engine: LaTeXEngine = Field(
             LaTeXEngine.PDFLATEX, description="LaTeX engine to use"
@@ -360,8 +519,12 @@ def check_latex() -> None:
 
 @app.command()
 def convert_markdown(
-    markdown_file: str = typer.Argument(..., help="Path to the markdown file to convert"),
-    output_file: str = typer.Option("", "--output", "-o", help="Custom output filename for .tex file"),
+    markdown_file: str = typer.Argument(
+        ..., help="Path to the markdown file to convert"
+    ),
+    output_file: str = typer.Option(
+        "", "--output", "-o", help="Custom output filename for .tex file"
+    ),
     template: str = typer.Option(
         "moderncv_template.tex", "--template", "-t", help="LaTeX template to use"
     ),
@@ -381,13 +544,19 @@ def convert_markdown(
     # Check if the input file exists
     md_path = Path(markdown_file)
     if not md_path.exists():
-        console.print(f"[red]❌ Error: Markdown file not found at '{markdown_file}'[/red]")
+        console.print(
+            f"[red]❌ Error: Markdown file not found at '{markdown_file}'[/red]"
+        )
         raise typer.Exit(1)
 
     # Check for OpenAI API key
     if not config.openai_api_key:
-        console.print("[red]❌ Error: OPENAI_API_KEY environment variable is required[/red]")
-        console.print("[yellow]Set it with: export OPENAI_API_KEY='your-api-key-here'[/yellow]")
+        console.print(
+            "[red]❌ Error: OPENAI_API_KEY environment variable is required[/red]"
+        )
+        console.print(
+            "[yellow]Set it with: export OPENAI_API_KEY='your-api-key-here'[/yellow]"
+        )
         raise typer.Exit(1)
 
     console.print("[green]✅ Input file verified[/green]")
@@ -397,7 +566,9 @@ def convert_markdown(
     cv_converter = MD2LaTeXAgent(api_key=config.openai_api_key, template_name=template)
 
     # Show conversion method
-    console.print("[blue]🤖 Using OpenAI agents for markdown to LaTeX conversion[/blue]")
+    console.print(
+        "[blue]🤖 Using OpenAI agents for markdown to LaTeX conversion[/blue]"
+    )
 
     # Convert the markdown file
     try:
@@ -436,11 +607,18 @@ def convert_markdown(
 @app.command()
 def compile_latex(
     tex_file: str = typer.Argument(..., help="Path to the .tex file to compile"),
-    output_file: str = typer.Option("", "--output", "-o", help="Custom output filename for PDF"),
+    output_file: str = typer.Option(
+        "", "--output", "-o", help="Custom output filename for PDF"
+    ),
     latex_engine: str = typer.Option(
         "pdflatex", "--engine", "-e", help="LaTeX engine to use"
     ),
-    max_attempts: int = typer.Option(5, "--max-attempts", "-m", help="Maximum number of attempts to compile the LaTeX file"),
+    max_attempts: int = typer.Option(
+        5,
+        "--max-attempts",
+        "-m",
+        help="Maximum number of attempts to compile the LaTeX file",
+    ),
     debug: bool = typer.Option(False, "--debug", help="Run in debug mode"),
 ) -> None:
     """Compile a LaTeX file to PDF from the command line."""
@@ -511,18 +689,18 @@ def compile_latex(
 def fix_style(
     pdf_file: str = typer.Option(
         "./output/to_improve_style.pdf",
-        "--pdf", "-p",
-        help="Path to the PDF file to analyze"
+        "--pdf",
+        "-p",
+        help="Path to the PDF file to analyze",
     ),
     tex_file: str = typer.Option(
         "./output/to_improve_style.tex",
-        "--tex", "-t",
-        help="Path to the LaTeX source file"
+        "--tex",
+        "-t",
+        help="Path to the LaTeX source file",
     ),
     output_file: str = typer.Option(
-        "improved.tex",
-        "--output", "-o",
-        help="Output filename for improved LaTeX file"
+        "improved.tex", "--output", "-o", help="Output filename for improved LaTeX file"
     ),
     debug: bool = typer.Option(False, "--debug", help="Run in debug mode"),
 ) -> None:
@@ -551,16 +729,24 @@ def fix_style(
 
     # Check for OpenAI API key
     if not os.getenv("OPENAI_API_KEY"):
-        console.print("[red]❌ Error: OPENAI_API_KEY environment variable is required[/red]")
-        console.print("[yellow]Set it with: export OPENAI_API_KEY='your-api-key-here'[/yellow]")
+        console.print(
+            "[red]❌ Error: OPENAI_API_KEY environment variable is required[/red]"
+        )
+        console.print(
+            "[yellow]Set it with: export OPENAI_API_KEY='your-api-key-here'[/yellow]"
+        )
         raise typer.Exit(1)
 
     console.print("[green]✅ Input files verified[/green]")
     console.print("[green]✅ OpenAI API key found[/green]")
 
     # Show analysis method
-    console.print("[blue]🤖 Using specialized AI agents for PDF analysis and LaTeX improvement[/blue]")
-    console.print("[yellow]📱 A browser window will open to display the PDF for analysis[/yellow]")
+    console.print(
+        "[blue]🤖 Using specialized AI agents for PDF analysis and LaTeX improvement[/blue]"
+    )
+    console.print(
+        "[yellow]📱 A browser window will open to display the PDF for analysis[/yellow]"
+    )
 
     # Run the analysis
     try:
@@ -575,30 +761,65 @@ def fix_style(
         coordinator = PDFStyleCoordinator()
         console.print("[green]✅ PDF Style Coordinator initialized[/green]")
 
-        # Create analysis request
-        request = PDFAnalysisRequest(
-            pdf_file_path=str(pdf_path.absolute()),
-            tex_file_path=str(tex_path.absolute()),
-            output_filename=output_file
-        )
-
         console.print("[blue]🔍 Starting PDF analysis and LaTeX improvement...[/blue]")
 
-        # Run the analysis
-        response = loop.run_until_complete(coordinator.analyze_and_improve(request))
+        # Call improve_with_variants directly (no compilation mode)
+        result = loop.run_until_complete(
+            coordinator.improve_with_variants(
+                initial_pdf_path=pdf_path,
+                initial_tex_path=tex_path,
+                latex_expert=None,  # NO COMPILATION
+                max_iterations=1,  # Single iteration
+                num_variants=1,  # Single variant
+                max_compile_attempts=0,  # Not used
+                enable_quality_validation=False,  # No judge without compilation
+                output_dir=Path("./output"),
+            )
+        )
 
-        if response.status.value == "success":
+        if result.status.value == "success":
+            # Handle custom output filename if specified
+            if output_file:
+                output_filename = (
+                    output_file
+                    if output_file.endswith(".tex")
+                    else f"{output_file}.tex"
+                )
+                final_path = Path("./output") / output_filename
+                final_path.parent.mkdir(parents=True, exist_ok=True)
+
+                if result.best_variant_tex_path:
+                    final_path.write_text(
+                        result.best_variant_tex_path.read_text(encoding="utf-8"),
+                        encoding="utf-8",
+                    )
+                    improved_tex_url = f"cv-writer://tex/{output_filename}"
+                else:
+                    console.print("[red]❌ No LaTeX variant was generated[/red]")
+                    raise typer.Exit(1)
+            else:
+                # Use the default variant path
+                if result.best_variant_tex_path:
+                    improved_tex_url = (
+                        f"cv-writer://tex/{result.best_variant_tex_path.name}"
+                    )
+                else:
+                    console.print("[red]❌ No LaTeX variant was generated[/red]")
+                    raise typer.Exit(1)
+
             console.print("[green]✅ Analysis completed successfully![/green]")
-            console.print(f"[blue]📋 Status: {response.message}[/blue]")
-            console.print(f"[blue]🔗 Improved LaTeX file: {response.improved_tex_url}[/blue]")
+            console.print(f"[blue]📋 Status: {result.message}[/blue]")
+            console.print(f"[blue]🔗 Improved LaTeX file: {improved_tex_url}[/blue]")
             console.print("\n[green]📊 The coordinator has:[/green]")
             console.print("   • Captured and analyzed PDF pages visually")
             console.print("   • Identified specific visual formatting issues")
             console.print("   • Implemented targeted LaTeX improvements")
             console.print("   • Generated an improved version of your CV")
-            console.print("\n[blue]💡 You can now compile the improved LaTeX file to see the visual enhancements![/blue]")
+            console.print(
+                "\n[blue]💡 You can now compile the improved LaTeX file to see the visual enhancements![/blue]"
+            )
         else:
-            console.print(f"[red]❌ Analysis failed: {response.message}[/red]")
+            console.print(f"[red]❌ Analysis failed: {result.message}[/red]")
             raise typer.Exit(1)
 
     except Exception as e:
@@ -606,11 +827,11 @@ def fix_style(
         console.print("\n[yellow]🔧 Troubleshooting tips:[/yellow]")
         console.print("   • Ensure Playwright is installed: pixi add playwright")
         console.print("   • Install browser binaries: pixi run playwright install")
-        console.print("   • Check that your PDF and LaTeX files exist and are accessible")
+        console.print(
+            "   • Check that your PDF and LaTeX files exist and are accessible"
+        )
         console.print("   • Verify your OpenAI API key is valid")
         raise typer.Exit(1) from e
-
-
 
 
 if __name__ == "__main__":

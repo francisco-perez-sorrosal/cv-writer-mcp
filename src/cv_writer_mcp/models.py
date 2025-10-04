@@ -82,7 +82,13 @@ def get_output_type_class(output_type_name: str):
     # Import package-specific models
     from .compilation.models import CompilationErrorOutput, CompilerAgentOutput
     from .conversion.models import LaTeXOutput
-    from .style.models import FormattingOutput, PageCaptureOutput, PDFAnalysisOutput
+    from .style.models import (
+        FormattingOutput,
+        PageCaptureOutput,
+        PDFAnalysisOutput,
+        SingleVariantEvaluationOutput,
+        VariantEvaluationOutput,
+    )
 
     # Centralized mapping of output type names to actual classes
     output_type_mapping = {
@@ -92,9 +98,14 @@ def get_output_type_class(output_type_name: str):
         "PageCaptureOutput": PageCaptureOutput,
         "FormattingOutput": FormattingOutput,
         "PDFAnalysisOutput": PDFAnalysisOutput,
+        # Multi-variant style improvement outputs
+        "SingleVariantEvaluationOutput": SingleVariantEvaluationOutput,
+        "VariantEvaluationOutput": VariantEvaluationOutput,
     }
 
     if output_type_name not in output_type_mapping:
-        raise ValueError(f"Unknown output type: {output_type_name}. Available types: {list(output_type_mapping.keys())}")
+        raise ValueError(
+            f"Unknown output type: {output_type_name}. Available types: {list(output_type_mapping.keys())}"
+        )
 
     return output_type_mapping[output_type_name]

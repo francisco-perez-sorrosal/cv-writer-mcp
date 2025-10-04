@@ -3,13 +3,13 @@
 This package contains agents, models, and tools for style analysis:
 - PageCaptureAgent: Captures PDF pages and analyzes visual formatting issues
 - FormattingAgent: Implements visual formatting improvements based on analysis
-- PDFStyleCoordinator: Coordinates the analysis and improvement workflow
-- Models: Request/Response models and style-specific types
+- StyleQualityAgent: LLM-as-a-judge for evaluating variant quality
+- PDFStyleCoordinator: Coordinates multi-variant style improvement with quality evaluation
+- Models: Style-specific types and diagnostics
 - Tools: pdf_computer_use_tool for page capture
 
 Public API:
     from cv_writer_mcp.style import PageCaptureAgent, FormattingAgent, PDFStyleCoordinator
-    from cv_writer_mcp.style.models import PDFAnalysisRequest, PDFAnalysisResponse
     from cv_writer_mcp.style.tools import pdf_computer_use_tool
 """
 

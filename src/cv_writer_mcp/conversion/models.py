@@ -44,5 +44,6 @@ class MarkdownToLaTeXResponse(BaseModel):
         None, description="Resource URI to access the generated LaTeX file"
     )
     message: str | None = Field(
-        None, description="Status message with conversion notes, error details, or other information"
+        None,
+        description="Status message with conversion notes, error details, or other information",
     )

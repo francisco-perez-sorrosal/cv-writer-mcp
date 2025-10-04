@@ -56,15 +56,16 @@ class MD2LaTeXAgent:
 
         # Load user guide
         userguide_path = base_path / "context" / "latex" / "moderncv_userguide.txt"
-        self.userguide_content = read_text_file(userguide_path, "ModernCV user guide", ".txt")
+        self.userguide_content = read_text_file(
+            userguide_path, "ModernCV user guide", ".txt"
+        )
         logger.info(f"Loaded moderncv user guide from {userguide_path}")
 
     def _create_agent(self) -> None:
         """Create the OpenAI agent with structured output."""
         # Get the agent instructions from YAML configuration
         agent_instructions = self.agent_config["instructions"].format(
-            moderncv_guide=self.userguide_content,
-            moderncv_template=self.latex_template
+            moderncv_guide=self.userguide_content, moderncv_template=self.latex_template
         )
 
         # Get output type class from centralized mapping

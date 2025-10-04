@@ -22,15 +22,25 @@ class TestMD2LaTeXAgent:
 
     def test_initialization(self):
         """Test MD2LaTeXAgent initialization."""
-        with patch("cv_writer_mcp.conversion.md2latex_agent.load_agent_config") as mock_load_config, \
-             patch("cv_writer_mcp.conversion.md2latex_agent.read_text_file") as mock_read_file, \
-             patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class:
+        with (
+            patch(
+                "cv_writer_mcp.conversion.md2latex_agent.load_agent_config"
+            ) as mock_load_config,
+            patch(
+                "cv_writer_mcp.conversion.md2latex_agent.read_text_file"
+            ) as mock_read_file,
+            patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class,
+        ):
 
             # Mock config
             mock_config = {
-                "agent_metadata": {"model": "gpt-4", "name": "test", "output_type": "LaTeXOutput"},
+                "agent_metadata": {
+                    "model": "gpt-4",
+                    "name": "test",
+                    "output_type": "LaTeXOutput",
+                },
                 "instructions": "Test instructions",
-                "prompt_template": "Test prompt: {markdown_content}"
+                "prompt_template": "Test prompt: {markdown_content}",
             }
             mock_load_config.return_value = mock_config
 
@@ -58,17 +68,27 @@ class TestMD2LaTeXAgent:
     @pytest.mark.asyncio
     async def test_convert_success(self):
         """Test successful markdown to LaTeX conversion."""
-        with patch("cv_writer_mcp.conversion.md2latex_agent.load_agent_config") as mock_load_config, \
-             patch("cv_writer_mcp.conversion.md2latex_agent.read_text_file") as mock_read_file, \
-             patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class, \
-             patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner, \
-             patch("pathlib.Path.write_text") as mock_write:
+        with (
+            patch(
+                "cv_writer_mcp.conversion.md2latex_agent.load_agent_config"
+            ) as mock_load_config,
+            patch(
+                "cv_writer_mcp.conversion.md2latex_agent.read_text_file"
+            ) as mock_read_file,
+            patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class,
+            patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner,
+            patch("pathlib.Path.write_text") as mock_write,
+        ):
 
             # Mock config
             mock_config = {
-                "agent_metadata": {"model": "gpt-4", "name": "test", "output_type": "LaTeXOutput"},
+                "agent_metadata": {
+                    "model": "gpt-4",
+                    "name": "test",
+                    "output_type": "LaTeXOutput",
+                },
                 "instructions": "Test instructions",
-                "prompt_template": "Test prompt: {markdown_content}"
+                "prompt_template": "Test prompt: {markdown_content}",
             }
             mock_load_config.return_value = mock_config
 
@@ -82,7 +102,9 @@ class TestMD2LaTeXAgent:
             # Mock runner result
             mock_result = MagicMock()
             mock_result.final_output = MagicMock()
-            mock_result.final_output.latex_content = "\\documentclass{article}\n\\begin{document}\nTest\n\\end{document}"
+            mock_result.final_output.latex_content = (
+                "\\documentclass{article}\n\\begin{document}\nTest\n\\end{document}"
+            )
             mock_result.final_output.conversion_notes = "Successfully converted"
             mock_runner.run = AsyncMock(return_value=mock_result)
 
@@ -103,16 +125,26 @@ class TestMD2LaTeXAgent:
     @pytest.mark.asyncio
     async def test_convert_empty_latex(self):
         """Test conversion with empty LaTeX content."""
-        with patch("cv_writer_mcp.conversion.md2latex_agent.load_agent_config") as mock_load_config, \
-             patch("cv_writer_mcp.conversion.md2latex_agent.read_text_file") as mock_read_file, \
-             patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class, \
-             patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner:
+        with (
+            patch(
+                "cv_writer_mcp.conversion.md2latex_agent.load_agent_config"
+            ) as mock_load_config,
+            patch(
+                "cv_writer_mcp.conversion.md2latex_agent.read_text_file"
+            ) as mock_read_file,
+            patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class,
+            patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner,
+        ):
 
             # Mock config
             mock_config = {
-                "agent_metadata": {"model": "gpt-4", "name": "test", "output_type": "LaTeXOutput"},
+                "agent_metadata": {
+                    "model": "gpt-4",
+                    "name": "test",
+                    "output_type": "LaTeXOutput",
+                },
                 "instructions": "Test instructions",
-                "prompt_template": "Test prompt: {markdown_content}"
+                "prompt_template": "Test prompt: {markdown_content}",
             }
             mock_load_config.return_value = mock_config
 
@@ -140,22 +172,35 @@ class TestMD2LaTeXAgent:
             response = await agent.convert(request)
 
             assert response.status == CompletionStatus.FAILED
-            assert "Agent response does not contain valid LaTeX content" in response.message
+            assert (
+                "Agent response does not contain valid LaTeX content"
+                in response.message
+            )
             assert "No content generated" in response.message
 
     @pytest.mark.asyncio
     async def test_convert_exception(self):
         """Test conversion with exception."""
-        with patch("cv_writer_mcp.conversion.md2latex_agent.load_agent_config") as mock_load_config, \
-             patch("cv_writer_mcp.conversion.md2latex_agent.read_text_file") as mock_read_file, \
-             patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class, \
-             patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner:
+        with (
+            patch(
+                "cv_writer_mcp.conversion.md2latex_agent.load_agent_config"
+            ) as mock_load_config,
+            patch(
+                "cv_writer_mcp.conversion.md2latex_agent.read_text_file"
+            ) as mock_read_file,
+            patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class,
+            patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner,
+        ):
 
             # Mock config
             mock_config = {
-                "agent_metadata": {"model": "gpt-4", "name": "test", "output_type": "LaTeXOutput"},
+                "agent_metadata": {
+                    "model": "gpt-4",
+                    "name": "test",
+                    "output_type": "LaTeXOutput",
+                },
                 "instructions": "Test instructions",
-                "prompt_template": "Test prompt: {markdown_content}"
+                "prompt_template": "Test prompt: {markdown_content}",
             }
             mock_load_config.return_value = mock_config
 

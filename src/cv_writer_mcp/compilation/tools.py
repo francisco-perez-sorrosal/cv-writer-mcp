@@ -59,31 +59,37 @@ async def latex2pdf_tool(
             log_file_path = Path(output_dir) / f"{Path(tex_file_path).stem}.log"
             if log_file_path.exists():
                 try:
-                    with open(log_file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    with open(log_file_path, encoding="utf-8", errors="ignore") as f:
                         log_file_content = f.read()
-                    logger.info(f"Read .log file ({len(log_file_content)} chars) for error extraction")
+                    logger.info(
+                        f"Read .log file ({len(log_file_content)} chars) for error extraction"
+                    )
                 except Exception as e:
                     logger.warning(f"Could not read .log file: {e}")
 
-        return json.dumps({
-            "success": compilation_success,
-            "compilation_time": compilation_time,
-            "error_message": (
-                None
-                if compilation_success
-                else f"LaTeX compilation had errors (exit code: {process.returncode})"
-            ),
-            "log_summary": output_text,
-            "engine_used": command.split()[0],
-            "output_path": str(pdf_path) if pdf_created else "",
-            "return_code": process.returncode,
-            "log_file_content": log_file_content,  # Agent can extract errors from this
-        })
+        return json.dumps(
+            {
+                "success": compilation_success,
+                "compilation_time": compilation_time,
+                "error_message": (
+                    None
+                    if compilation_success
+                    else f"LaTeX compilation had errors (exit code: {process.returncode})"
+                ),
+                "log_summary": output_text,
+                "engine_used": command.split()[0],
+                "output_path": str(pdf_path) if pdf_created else "",
+                "return_code": process.returncode,
+                "log_file_content": log_file_content,  # Agent can extract errors from this
+            }
+        )
 
     except Exception as e:
         error_message = f"Tool error: {str(e)}"
         if isinstance(e, TimeoutError) or isinstance(e, asyncio.TimeoutError):
-            error_message = f"Tool error: LaTeX compilation timed out after {timeout} seconds"
+            error_message = (
+                f"Tool error: LaTeX compilation timed out after {timeout} seconds"
+            )
 
         return json.dumps(
             {

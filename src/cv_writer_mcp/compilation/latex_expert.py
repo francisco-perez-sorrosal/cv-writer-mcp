@@ -75,7 +75,6 @@ class LaTeXExpert:
         )
         return validation_result
 
-
     def check_latex_installation(
         self, engine: LaTeXEngine = LaTeXEngine.PDFLATEX
     ) -> bool:
@@ -310,14 +309,21 @@ class LaTeXExpert:
         Returns:
             Final compilation result
         """
-        logger.info(f"🚀 Starting LaTeX compilation orchestration ({max_attempts} max attempts)")
+        logger.info(
+            f"🚀 Starting LaTeX compilation orchestration ({max_attempts} max attempts)"
+        )
 
         current_file = tex_file_path
 
         for attempt in range(1, max_attempts + 1):
             # Step 1: Attempt compilation
             compile_result = await self._compile_step(
-                current_file, output_path, engine, attempt, max_attempts, user_instructions
+                current_file,
+                output_path,
+                engine,
+                attempt,
+                max_attempts,
+                user_instructions,
             )
 
             # Gate: Success? Done.
@@ -339,7 +345,9 @@ class LaTeXExpert:
                     continue
                 else:
                     # Cannot fix, fail immediately
-                    result = self._create_failure_result(compile_result, "Error fixing failed")
+                    result = self._create_failure_result(
+                        compile_result, "Error fixing failed"
+                    )
                     logger.error(f"❌ Orchestration failed: {result.message}")
                     logger.info(str(self._compilation_diagnostics))
                     return result

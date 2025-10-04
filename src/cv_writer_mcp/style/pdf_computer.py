@@ -34,22 +34,22 @@ class PDFPlaywrightComputer:
             self.browser = await playwright_instance.chromium.launch(
                 headless=headless,
                 args=[
-                    '--allow-file-access-from-files',
-                    '--disable-web-security',
-                    '--no-sandbox',
-                    '--disable-features=VizDisplayCompositor',
-                    '--force-device-scale-factor=1',
+                    "--allow-file-access-from-files",
+                    "--disable-web-security",
+                    "--no-sandbox",
+                    "--disable-features=VizDisplayCompositor",
+                    "--force-device-scale-factor=1",
                     # Enable Chrome's built-in PDF viewer
-                    '--enable-pdf-viewer',
+                    "--enable-pdf-viewer",
                     # Don't disable PDF extension - we want to use it
-                    '--no-default-browser-check',
-                    '--disable-translate'
-                ]
+                    "--no-default-browser-check",
+                    "--disable-translate",
+                ],
             )
 
             # Create a simple browser context for PDF viewing
             context = await self.browser.new_context(
-                viewport={'width': 1200, 'height': 1600},  # Good for PDF viewing
+                viewport={"width": 1200, "height": 1600},  # Good for PDF viewing
             )
 
             self.page = await context.new_page()
@@ -64,10 +64,10 @@ class PDFPlaywrightComputer:
     async def open_pdf(self, pdf_path: str) -> int:
         """
         Open PDF file in browser and return page count.
-        
+
         Args:
             pdf_path: Path to the PDF file
-            
+
         Returns:
             Number of pages in the PDF
         """
@@ -85,7 +85,7 @@ class PDFPlaywrightComputer:
             self.current_pdf_path = pdf_path
 
             # Navigate directly to PDF file - Chrome will open it in built-in viewer
-            await self.page.goto(file_url, wait_until='networkidle', timeout=30000)
+            await self.page.goto(file_url, wait_until="networkidle", timeout=30000)
 
             # Wait for PDF to load
             await asyncio.sleep(5)
@@ -93,7 +93,9 @@ class PDFPlaywrightComputer:
             # Try to detect page count from Chrome's PDF viewer
             page_count = await self._detect_chrome_pdf_page_count()
 
-            logger.info(f"PDF opened successfully in Chrome PDF viewer, detected {page_count} pages")
+            logger.info(
+                f"PDF opened successfully in Chrome PDF viewer, detected {page_count} pages"
+            )
             return page_count
 
         except Exception as e:
@@ -112,7 +114,8 @@ class PDFPlaywrightComputer:
             # Method 1: Try JavaScript evaluation to access Chrome's PDF viewer
             try:
                 for attempt in range(5):
-                    page_count = await self.page.evaluate("""
+                    page_count = await self.page.evaluate(
+                        """
                         () => {
                             // Try to access Chrome's PDF viewer plugin
                             const plugin = document.querySelector('embed[type="application/pdf"]');
@@ -133,9 +136,12 @@ class PDFPlaywrightComputer:
                             }
                             return null;
                         }
-                    """)
+                    """
+                    )
                     if page_count:
-                        logger.debug(f"Got page count from Chrome PDF viewer (attempt {attempt + 1}): {page_count}")
+                        logger.debug(
+                            f"Got page count from Chrome PDF viewer (attempt {attempt + 1}): {page_count}"
+                        )
                         break
                     await asyncio.sleep(1)  # Wait before retry
             except Exception as e:
@@ -150,7 +156,9 @@ class PDFPlaywrightComputer:
 
             # Final fallback
             if not page_count or page_count <= 0:
-                logger.warning("Could not detect page count from Chrome PDF viewer, defaulting to 4")
+                logger.warning(
+                    "Could not detect page count from Chrome PDF viewer, defaulting to 4"
+                )
                 page_count = 4
 
             return page_count
@@ -172,10 +180,11 @@ class PDFPlaywrightComputer:
             try:
                 # Wait for PDF.js application to be ready and try multiple times
                 for attempt in range(10):
-                    page_count = await self.page.evaluate("""
+                    page_count = await self.page.evaluate(
+                        """
                         () => {
                             // Try to access PDF.js viewer app
-                            if (window.PDFViewerApplication && 
+                            if (window.PDFViewerApplication &&
                                 window.PDFViewerApplication.pdfDocument &&
                                 window.PDFViewerApplication.pdfDocument.numPages) {
                                 return window.PDFViewerApplication.pdfDocument.numPages;
@@ -186,9 +195,12 @@ class PDFPlaywrightComputer:
                             }
                             return null;
                         }
-                    """)
+                    """
+                    )
                     if page_count:
-                        logger.debug(f"Got page count from JavaScript (attempt {attempt + 1}): {page_count}")
+                        logger.debug(
+                            f"Got page count from JavaScript (attempt {attempt + 1}): {page_count}"
+                        )
                         break
                     await asyncio.sleep(2)  # Wait before retry
             except Exception as e:
@@ -198,18 +210,29 @@ class PDFPlaywrightComputer:
             if not page_count:
                 try:
                     # Look for various possible selectors for page count
-                    selectors = ['#numPages', '.numPages', '[data-l10n-id="page_of_pages"]']
+                    selectors = [
+                        "#numPages",
+                        ".numPages",
+                        '[data-l10n-id="page_of_pages"]',
+                    ]
                     for selector in selectors:
                         try:
-                            page_count_element = await self.page.wait_for_selector(selector, timeout=3000)
+                            page_count_element = await self.page.wait_for_selector(
+                                selector, timeout=3000
+                            )
                             if page_count_element:
-                                page_count_text = await page_count_element.text_content()
+                                page_count_text = (
+                                    await page_count_element.text_content()
+                                )
                                 # Extract number from text like "of 5" or just "5"
                                 import re
-                                match = re.search(r'(\d+)', page_count_text)
+
+                                match = re.search(r"(\d+)", page_count_text)
                                 if match:
                                     page_count = int(match.group(1))
-                                    logger.debug(f"Got page count from {selector}: {page_count}")
+                                    logger.debug(
+                                        f"Got page count from {selector}: {page_count}"
+                                    )
                                     break
                         except Exception:
                             continue
@@ -220,11 +243,12 @@ class PDFPlaywrightComputer:
             if not page_count:
                 try:
                     # Get all visible text and look for patterns like "1 / 5" or "Page 1 of 5"
-                    page_text = await self.page.text_content('body')
+                    page_text = await self.page.text_content("body")
                     if page_text:
                         import re
+
                         # Look for patterns like "1 / 5" or "1 of 5"
-                        matches = re.findall(r'(?:of|/)[\s]*(\d+)', page_text)
+                        matches = re.findall(r"(?:of|/)[\s]*(\d+)", page_text)
                         if matches:
                             # Take the largest number found (likely the total pages)
                             page_count = max([int(m) for m in matches])
@@ -234,7 +258,9 @@ class PDFPlaywrightComputer:
 
             # Final fallback
             if not page_count or page_count <= 0:
-                logger.warning("Could not detect page count from PDF.js, defaulting to 4")
+                logger.warning(
+                    "Could not detect page count from PDF.js, defaulting to 4"
+                )
                 page_count = 4
 
             return page_count
@@ -256,10 +282,10 @@ class PDFPlaywrightComputer:
             try:
                 # Look for page indicators like "1 of 5" or page count elements
                 page_info_selectors = [
-                    '[data-page-number]',
-                    '.page-indicator',
+                    "[data-page-number]",
+                    ".page-indicator",
                     'input[title*="page"]',
-                    '#pageNumber'
+                    "#pageNumber",
                 ]
 
                 for selector in page_info_selectors:
@@ -275,7 +301,8 @@ class PDFPlaywrightComputer:
             if not page_count:
                 try:
                     # Try to access PDF viewer JavaScript API
-                    page_count = await self.page.evaluate("""
+                    page_count = await self.page.evaluate(
+                        """
                         () => {
                             // Try Chrome's PDF viewer
                             if (window.PDFViewerApplication) {
@@ -285,7 +312,8 @@ class PDFPlaywrightComputer:
                             const pages = document.querySelectorAll('[data-page-number], .page');
                             return pages.length;
                         }
-                    """)
+                    """
+                    )
                 except Exception as e:
                     logger.debug(f"Method 2 failed: {e}")
 
@@ -312,8 +340,8 @@ class PDFPlaywrightComputer:
         try:
             # Get viewport dimensions
             viewport = self.page.viewport_size
-            center_x = viewport['width'] // 2
-            center_y = viewport['height'] // 2
+            center_x = viewport["width"] // 2
+            center_y = viewport["height"] // 2
 
             # Click directly on the center coordinates to focus the PDF
             await self.page.mouse.click(center_x, center_y)
@@ -332,21 +360,23 @@ class PDFPlaywrightComputer:
             await self._ensure_pdf_viewer_focus()
 
             # Go to beginning first
-            await self.page.keyboard.press('Home')
+            await self.page.keyboard.press("Home")
             await asyncio.sleep(2)
 
             page_count = 1
             max_attempts = 15  # Reasonable limit for CV pages
 
-            logger.debug("Using PageDown for PDF page detection via screenshot comparison")
+            logger.debug(
+                "Using PageDown for PDF page detection via screenshot comparison"
+            )
 
             # Keep pressing PageDown and compare screenshots to detect page changes
-            for i in range(max_attempts):
+            for _i in range(max_attempts):
                 # Take screenshot before navigation
                 screenshot_before = await self.page.screenshot()
 
                 # Navigate to next page
-                await self.page.keyboard.press('PageDown')
+                await self.page.keyboard.press("PageDown")
                 await asyncio.sleep(1.5)  # Give PDF viewer time to respond
 
                 # Take screenshot after navigation
@@ -355,17 +385,23 @@ class PDFPlaywrightComputer:
                 # Compare screenshots - if different, we likely moved to a new page
                 if screenshot_before != screenshot_after:
                     page_count += 1
-                    logger.debug(f"Page {page_count} detected via screenshot comparison")
+                    logger.debug(
+                        f"Page {page_count} detected via screenshot comparison"
+                    )
                 else:
-                    logger.debug(f"No page change detected, stopping at page {page_count}")
+                    logger.debug(
+                        f"No page change detected, stopping at page {page_count}"
+                    )
                     break
 
             # Go back to beginning
-            await self.page.keyboard.press('Home')
+            await self.page.keyboard.press("Home")
             await asyncio.sleep(1)
 
             logger.info(f"Final detected page count: {page_count}")
-            return max(page_count, 4)  # Ensure at least 4 pages as that's what pdfinfo shows
+            return max(
+                page_count, 4
+            )  # Ensure at least 4 pages as that's what pdfinfo shows
 
         except Exception as e:
             logger.error(f"Failed to count pages by navigation: {e}")
@@ -379,7 +415,7 @@ class PDFPlaywrightComputer:
 
             # Check if we're using PDF.js viewer or Chrome's built-in viewer
             current_url = self.page.url
-            if 'pdf.js' in current_url:
+            if "pdf.js" in current_url:
                 # Use PDF.js specific navigation
                 await self._navigate_pdfjs_page(page_number)
             else:
@@ -400,12 +436,12 @@ class PDFPlaywrightComputer:
 
             # Use keyboard navigation (Page Down from start)
             # Go to beginning first
-            await self.page.keyboard.press('Home')
+            await self.page.keyboard.press("Home")
             await asyncio.sleep(1)
 
             # Navigate to the desired page (1-indexed) using Page Down
-            for i in range(page_number - 1):
-                await self.page.keyboard.press('PageDown')
+            for _i in range(page_number - 1):
+                await self.page.keyboard.press("PageDown")
                 await asyncio.sleep(1)  # Give Chrome PDF viewer time to respond
 
         except Exception as e:
@@ -417,11 +453,13 @@ class PDFPlaywrightComputer:
         try:
             # Method 1: Try using the page input field
             try:
-                page_input = await self.page.wait_for_selector('#pageNumber', timeout=3000)
+                page_input = await self.page.wait_for_selector(
+                    "#pageNumber", timeout=3000
+                )
                 if page_input:
                     await page_input.clear()
                     await page_input.fill(str(page_number))
-                    await self.page.keyboard.press('Enter')
+                    await self.page.keyboard.press("Enter")
                     await asyncio.sleep(2)  # Wait for page to render
                     return
             except Exception as e:
@@ -429,13 +467,15 @@ class PDFPlaywrightComputer:
 
             # Method 2: Try JavaScript navigation
             try:
-                await self.page.evaluate(f"""
+                await self.page.evaluate(
+                    f"""
                     () => {{
                         if (window.PDFViewerApplication) {{
                             window.PDFViewerApplication.page = {page_number};
                         }}
                     }}
-                """)
+                """
+                )
                 await asyncio.sleep(2)
                 return
             except Exception as e:
@@ -443,12 +483,12 @@ class PDFPlaywrightComputer:
 
             # Method 3: Fallback to keyboard navigation
             # Go to first page then navigate
-            await self.page.keyboard.press('Home')
+            await self.page.keyboard.press("Home")
             await asyncio.sleep(1)
 
             # Navigate to the desired page
-            for i in range(page_number - 1):
-                await self.page.keyboard.press('PageDown')
+            for _i in range(page_number - 1):
+                await self.page.keyboard.press("PageDown")
                 await asyncio.sleep(0.5)
 
         except Exception as e:
@@ -462,10 +502,7 @@ class PDFPlaywrightComputer:
                 raise RuntimeError("Browser not initialized")
 
             # Take full page screenshot (quality not supported for PNG)
-            screenshot_bytes = await self.page.screenshot(
-                type='png',
-                full_page=True
-            )
+            screenshot_bytes = await self.page.screenshot(type="png", full_page=True)
 
             return screenshot_bytes
 
@@ -476,10 +513,10 @@ class PDFPlaywrightComputer:
     async def capture_all_pages(self, pdf_path: str) -> list[dict[str, Any]]:
         """
         Capture all pages of a PDF as screenshots.
-        
+
         Args:
             pdf_path: Path to the PDF file
-            
+
         Returns:
             List of page data with screenshots
         """
@@ -499,13 +536,17 @@ class PDFPlaywrightComputer:
 
                     # Take screenshot
                     screenshot_bytes = await self.take_screenshot()
-                    screenshot_base64 = base64.b64encode(screenshot_bytes).decode('utf-8')
+                    screenshot_base64 = base64.b64encode(screenshot_bytes).decode(
+                        "utf-8"
+                    )
 
-                    pages_data.append({
-                        'page_number': page_num,
-                        'screenshot_bytes': screenshot_bytes,
-                        'screenshot_base64': screenshot_base64
-                    })
+                    pages_data.append(
+                        {
+                            "page_number": page_num,
+                            "screenshot_bytes": screenshot_bytes,
+                            "screenshot_base64": screenshot_base64,
+                        }
+                    )
 
                     logger.debug(f"Captured page {page_num} successfully")
 

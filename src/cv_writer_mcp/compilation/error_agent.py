@@ -119,9 +119,6 @@ class CompilationErrorAgent:
 
         return validation_result
 
-
-
-
     def build_fixing_prompt(
         self,
         latex_content: str,
@@ -216,7 +213,10 @@ class CompilationErrorAgent:
                     "ERROR_FIXING_CONTENT_VALIDATION", content_validation
                 )
 
-                if fixing_output.status == CompletionStatus.SUCCESS and fixing_output.corrected_content:
+                if (
+                    fixing_output.status == CompletionStatus.SUCCESS
+                    and fixing_output.corrected_content
+                ):
                     self.diagnostics.increment("successful_fixes")
 
                 return fixing_output

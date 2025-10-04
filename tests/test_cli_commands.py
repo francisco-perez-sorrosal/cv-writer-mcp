@@ -42,7 +42,6 @@ class TestCLICommands:
             mock_response = CompileLaTeXResponse(
                 status=CompletionStatus.SUCCESS,
                 pdf_url="cv-writer://pdf/test.pdf",
-                metadata={"output_filename": "test.pdf", "engine": "pdflatex"},
             )
 
             mock_compiler.compile_latex_file = AsyncMock(return_value=mock_response)
@@ -108,7 +107,7 @@ class TestCLICommands:
             mock_response = CompileLaTeXResponse(
                 status=CompletionStatus.FAILED,
                 pdf_url=None,
-                error_message="Compilation failed: Missing package",
+                message="Compilation failed: Missing package",
             )
 
             mock_compiler.compile_latex_file = AsyncMock(return_value=mock_response)
@@ -137,7 +136,6 @@ class TestCLICommands:
             mock_response = CompileLaTeXResponse(
                 status=CompletionStatus.SUCCESS,
                 pdf_url="cv-writer://pdf/custom.pdf",
-                metadata={"output_filename": "custom.pdf", "engine": "pdflatex"},
             )
 
             mock_compiler.compile_latex_file = AsyncMock(return_value=mock_response)
@@ -168,7 +166,6 @@ class TestCLICommands:
             mock_response = CompileLaTeXResponse(
                 status=CompletionStatus.SUCCESS,
                 pdf_url="cv-writer://pdf/test.pdf",
-                metadata={"output_filename": "test.pdf", "engine": "pdflatex"},
             )
 
             mock_compiler.compile_latex_file = AsyncMock(return_value=mock_response)
@@ -198,7 +195,6 @@ class TestCLICommands:
             mock_response = CompileLaTeXResponse(
                 status=CompletionStatus.SUCCESS,
                 pdf_url="cv-writer://pdf/test.pdf",
-                metadata={"output_filename": "test.pdf", "engine": "pdflatex"},
             )
 
             mock_compiler.compile_latex_file = AsyncMock(return_value=mock_response)

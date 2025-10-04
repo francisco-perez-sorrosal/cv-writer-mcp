@@ -144,10 +144,18 @@ class CompilationAgent:
                 result_data = json.loads(json_str)
                 is_success = result_data.get("success", False)
                 agent_output = CompilerAgentOutput(
-                    status=CompletionStatus.SUCCESS if is_success else CompletionStatus.FAILED,
+                    status=(
+                        CompletionStatus.SUCCESS
+                        if is_success
+                        else CompletionStatus.FAILED
+                    ),
                     compilation_time=result_data.get("compilation_time", 0.0),
-                    compilation_summary=result_data.get("compilation_summary", result_data.get("log_summary", "")),
-                    errors_found=result_data.get("errors_found") if not is_success else None,
+                    compilation_summary=result_data.get(
+                        "compilation_summary", result_data.get("log_summary", "")
+                    ),
+                    errors_found=(
+                        result_data.get("errors_found") if not is_success else None
+                    ),
                     output_path=result_data.get("output_path") if is_success else None,
                 )
 
@@ -158,7 +166,11 @@ class CompilationAgent:
                         "success": agent_output.status == CompletionStatus.SUCCESS,
                         "compilation_time": agent_output.compilation_time,
                         "has_summary": bool(agent_output.compilation_summary),
-                        "errors_count": len(agent_output.errors_found) if agent_output.errors_found else 0,
+                        "errors_count": (
+                            len(agent_output.errors_found)
+                            if agent_output.errors_found
+                            else 0
+                        ),
                     },
                 )
                 return agent_output
@@ -252,22 +264,24 @@ class CompilationAgent:
         tex_file_abs = tex_file_path.absolute()
         output_dir_abs = output_path.parent.absolute()
 
-        additional_instructions = f"\nAdditional instructions: {user_instructions}" if user_instructions else ""
+        additional_instructions = (
+            f"\nAdditional instructions: {user_instructions}"
+            if user_instructions
+            else ""
+        )
 
         compilation_prompt = self.agent_config["prompt_template"].format(
             engine=engine.value,
             output_dir=output_dir_abs,
             tex_file=tex_file_abs,
-            additional_instructions=additional_instructions
+            additional_instructions=additional_instructions,
         )
 
         try:
             compilation_result = await Runner.run(compilation_agent, compilation_prompt)
 
             # Parse the agent output
-            agent_output = self.parse_compiler_agent_output(
-                compilation_result, engine
-            )
+            agent_output = self.parse_compiler_agent_output(compilation_result, engine)
 
             if agent_output.status == CompletionStatus.SUCCESS:
                 self.diagnostics.increment("successful_compilations")

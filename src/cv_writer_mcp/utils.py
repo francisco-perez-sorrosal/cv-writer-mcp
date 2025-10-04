@@ -49,9 +49,7 @@ def create_timestamped_version(tex_file_path: Path) -> Path:
 
 
 def read_text_file(
-    file_path: Path,
-    description: str = "file",
-    expected_extension: str | None = None
+    file_path: Path, description: str = "file", expected_extension: str | None = None
 ) -> str:
     """Read text content from a file with proper error handling and logging.
 
@@ -75,7 +73,7 @@ def read_text_file(
 
     # Validate file extension if specified
     if expected_extension:
-        if not expected_extension.startswith('.'):
+        if not expected_extension.startswith("."):
             expected_extension = f".{expected_extension}"
 
         if file_path.suffix.lower() != expected_extension.lower():
@@ -86,7 +84,9 @@ def read_text_file(
 
     try:
         content = file_path.read_text(encoding="utf-8")
-        logger.info(f"Successfully read {description} ({len(content)} characters): {file_path}")
+        logger.info(
+            f"Successfully read {description} ({len(content)} characters): {file_path}"
+        )
         return content
     except UnicodeDecodeError as e:
         logger.error(f"Failed to decode {description} as UTF-8: {file_path} - {e}")
@@ -123,7 +123,8 @@ def load_agent_config(config_file: str) -> dict[str, Any]:
 
     # Define search paths in priority order
     search_paths = [
-        base_dir / config_file,  # Root level (current location for non-refactored agents)
+        base_dir
+        / config_file,  # Root level (current location for non-refactored agents)
         base_dir / "compilation" / "configs" / config_file,  # Compilation package
         base_dir / "conversion" / "configs" / config_file,  # Conversion package
         base_dir / "style" / "configs" / config_file,  # Style package
