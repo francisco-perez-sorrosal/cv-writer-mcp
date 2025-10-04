@@ -30,45 +30,36 @@ class FormattingAgent:
             variant_id: ID of the variant (1, 2, 3, ...)
 
         Returns:
-            Strategy-specific instructions to append to base instructions
+            Strategy-specific instructions for the prompt
         """
         strategies = {
-            1: """
-VARIANT STRATEGY: Conservative Approach
-────────────────────────────────────────
-- Focus on spacing optimization and consistency
-- Make minimal structural changes
-- Prefer safe, proven LaTeX patterns
-- Prioritize compilation safety
-- Conservative use of vertical space reduction
-""",
-            2: """
-VARIANT STRATEGY: Aggressive Approach
-────────────────────────────────────────
-- Bold formatting improvements and restructuring
-- Maximize space efficiency
-- More aggressive spacing reduction
-- Willing to restructure sections for better layout
-- Prioritize visual impact over safety
-""",
-            3: """
-VARIANT STRATEGY: Balanced Approach
-────────────────────────────────────────
-- Balance between spacing and readability
-- Moderate structural changes
-- Mix conservative and aggressive techniques
-- Focus on overall coherence
-- Optimize for professional appearance
-""",
+            1: """Strategy: CONSERVATIVE APPROACH
+- Focus on spacing optimization and consistency fixes only
+- Make minimal structural changes to preserve original organization
+- Prefer safe, proven LaTeX patterns that ensure compilation safety
+- Apply spacing reduction conservatively (only obvious excessive spacing)
+- Prioritize maintaining document structure and readability""",
+            2: """Strategy: AGGRESSIVE APPROACH
+- Pursue bold formatting improvements and section restructuring
+- Maximize space efficiency with substantial spacing reductions
+- Willing to significantly restructure sections for optimal layout
+- Apply aggressive spacing reduction throughout document
+- Prioritize visual impact and space optimization""",
+            3: """Strategy: BALANCED APPROACH (recommended)
+- Balance spacing optimization with readability preservation
+- Apply moderate structural changes where clearly beneficial
+- Mix conservative patterns with selective aggressive improvements
+- Focus on overall document coherence and professionalism
+- Optimize for professional appearance while maintaining safety""",
         }
 
         return strategies.get(variant_id, strategies[3])  # Default to balanced
 
     def _create_agent(self, variant_id: int = 1) -> Agent:
-        """Create formatting agent with variant-specific configuration.
+        """Create formatting agent instance.
 
         Args:
-            variant_id: ID of the variant to configure strategy for
+            variant_id: ID of the variant (for naming purposes)
 
         Returns:
             Configured Agent instance
@@ -79,14 +70,9 @@ VARIANT STRATEGY: Balanced Approach
             self.agent_config["agent_metadata"]["output_type"]
         )
 
-        # Build variant-specific instructions
-        base_instructions = self.agent_config["instructions"]
-        variant_strategy = self._get_variant_strategy(variant_id)
-        full_instructions = base_instructions + variant_strategy
-
         return Agent(
             name=f"{self.agent_config['agent_metadata']['name']}_v{variant_id}",
-            instructions=full_instructions,
+            instructions=self.agent_config["instructions"],
             tools=[],
             model=self.model,
             output_type=output_type_class,
@@ -100,46 +86,43 @@ VARIANT STRATEGY: Balanced Approach
         variant_id: int,
         iteration_feedback: str,
     ) -> str:
-        """Build prompt with all context including variant and feedback.
+        """Build complete prompt with all context.
 
         Args:
             latex_content: Original LaTeX content
             visual_analysis_results: Analysis from page capture
             suggested_fixes: List of suggested fixes
-            variant_id: Variant ID for context
+            variant_id: Variant ID for strategy selection
             iteration_feedback: Feedback from previous iteration (if any)
 
         Returns:
-            Complete prompt string
+            Complete prompt string with all placeholders replaced
         """
-        # Base prompt from template
         template = self.agent_config["prompt_template"]
+
+        # Get variant strategy
+        variant_strategy = self._get_variant_strategy(variant_id)
+
+        # Format iteration feedback
+        if iteration_feedback:
+            feedback_text = f"""Previous iteration feedback from quality judge:
+{iteration_feedback}
+
+Please incorporate this feedback to improve the formatting."""
+        else:
+            feedback_text = "No previous iteration feedback (first iteration)."
+
+        # Format suggested fixes
+        fixes_text = "\n".join(f"- {fix}" for fix in suggested_fixes)
+
+        # Replace all placeholders
         prompt = (
             template.replace("{latex_content}", latex_content)
             .replace("{visual_analysis_results}", visual_analysis_results)
-            .replace("{suggested_fixes}", "\n".join(suggested_fixes))
+            .replace("{suggested_fixes}", fixes_text)
+            .replace("{variant_strategy}", variant_strategy)
+            .replace("{iteration_feedback}", feedback_text)
         )
-
-        # Add iteration feedback if available
-        if iteration_feedback:
-            feedback_section = f"""
-
-FEEDBACK FROM PREVIOUS ITERATION:
-═════════════════════════════════
-{iteration_feedback}
-
-Please incorporate this feedback into your improvements.
-"""
-            prompt += feedback_section
-
-        # Add variant context
-        variant_context = f"""
-
-VARIANT CONTEXT:
-════════════════
-You are generating Variant {variant_id}. Apply your variant-specific strategy as instructed.
-"""
-        prompt += variant_context
 
         return prompt
 
