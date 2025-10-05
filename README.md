@@ -103,12 +103,13 @@ Phase 2: Initial Compilation (LOOP #1: compile-fix-compile)
 Phase 3: Style Improvement (LOOP #2: multi-variant with judge)
   └─ PDFStyleCoordinator
       FOR iteration in 1..max_iterations:
-        ├─ PageCaptureAgent: analyze PDF visually
-        ├─ Generate N variants IN PARALLEL
+        ├─ Step 1: Convert PDF to screenshots (utility)
+        ├─ Step 2: VisualCriticAgent critiques design quality
+        ├─ Step 3: Generate N variants IN PARALLEL
         │   FOR each variant:
-        │     ├─ FormattingAgent: generate variant LaTeX
+        │     ├─ FormattingAgent: translate critiques → LaTeX fixes
         │     └─ LOOP #1: compile-fix-compile (nested!)
-        ├─ StyleQualityAgent: evaluate variants and pick best
+        ├─ Step 4: StyleQualityAgent evaluates variants and picks best
         └─ Decision: pass/needs_improvement → stop or continue
 ```
 
@@ -290,9 +291,9 @@ cv-writer-mcp/
 │   │   └── md2latex_agent.py
 │   ├── style/                  # PDF style improvement
 │   │   ├── pdf_style_coordinator.py
-│   │   ├── page_capture_agent.py
-│   │   ├── formatting_agent.py
-│   │   └── quality_agent.py    # LLM-as-a-judge
+│   │   ├── visual_critic_agent.py    # Design quality critic
+│   │   ├── formatting_agent.py       # LaTeX implementation
+│   │   └── quality_agent.py          # LLM-as-a-judge
 │   ├── main.py                 # MCP server and CLI entry point
 │   └── models.py               # Shared data models
 ├── context/                    # LaTeX templates
@@ -305,14 +306,18 @@ cv-writer-mcp/
 
 ### Multi-Variant Style Improvement
 
-1. **Capture & Analyze**: PageCaptureAgent uses Playwright to capture PDF pages and identify visual issues
-2. **Generate Variants**: FormattingAgent creates N different style approaches in parallel
+1. **Screenshot Capture**: Utility function uses Playwright to convert PDF pages to PNG images
+2. **Visual Critique**: VisualCriticAgent analyzes screenshots and identifies design quality issues
+   - Evaluates spacing, consistency, readability, layout
+   - Describes problems in design language (not code)
+   - Suggests WHAT should improve (goals, not implementation)
+3. **Generate Variants**: FormattingAgent translates critiques into N different LaTeX implementations in parallel
    - Variant 1: Conservative (safe, minimal changes)
    - Variant 2: Aggressive (bold formatting, space optimization)
    - Variant 3+: Balanced approaches
-3. **Compile Each Variant**: Each variant goes through compile-fix-compile loop until success
-4. **Judge Evaluation**: StyleQualityAgent compares all variants and selects the best
-5. **Iterate**: If score is "needs_improvement", repeat with judge feedback
+4. **Compile Each Variant**: Each variant goes through compile-fix-compile loop until success
+5. **Judge Evaluation**: StyleQualityAgent compares all variants and selects the best
+6. **Iterate**: If score is "needs_improvement", repeat with judge feedback
 
 ### Quality Criteria
 

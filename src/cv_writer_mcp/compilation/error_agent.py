@@ -137,13 +137,12 @@ class CompilationErrorAgent:
         Returns:
             Formatted error fixing prompt string
         """
-        # Format the prompt template with new simplified variables
+        # Format the prompt template with error information
         # Note: Values are inserted as-is by format(), no escaping needed
         error_fixing_prompt = self.agent_config["prompt_template"].format(
             latex_content=latex_content,
             tex_file_path=tex_file_path,
             error_count=len(errors_found),
-            warning_count=0,  # TODO: Extract warnings separately if needed
             exit_code=exit_code,
             error_log="\n".join(errors_found),
         )
@@ -177,14 +176,14 @@ class CompilationErrorAgent:
 
         # Get output type class from centralized mapping
         output_type_class = get_output_type_class(
-            self.agent_config["agent"]["output_type"]
+            self.agent_config["agent_metadata"]["output_type"]
         )
 
         return Agent(
-            name=self.agent_config["agent"]["name"],
+            name=self.agent_config["agent_metadata"]["name"],
             instructions=error_fixing_instructions,
             tools=[],  # No tools needed - content passed in prompt
-            model=self.agent_config["agent"]["model"],
+            model=self.agent_config["agent_metadata"]["model"],
             output_type=output_type_class,
         )
 

@@ -84,10 +84,10 @@ def get_output_type_class(output_type_name: str):
     from .conversion.models import LaTeXOutput
     from .style.models import (
         FormattingOutput,
-        PageCaptureOutput,
         PDFAnalysisOutput,
         SingleVariantEvaluationOutput,
         VariantEvaluationOutput,
+        VisualCriticOutput,
     )
 
     # Centralized mapping of output type names to actual classes
@@ -95,7 +95,7 @@ def get_output_type_class(output_type_name: str):
         "LaTeXOutput": LaTeXOutput,
         "CompilerAgentOutput": CompilerAgentOutput,
         "CompilationErrorOutput": CompilationErrorOutput,
-        "PageCaptureOutput": PageCaptureOutput,
+        "VisualCriticOutput": VisualCriticOutput,
         "FormattingOutput": FormattingOutput,
         "PDFAnalysisOutput": PDFAnalysisOutput,
         # Multi-variant style improvement outputs

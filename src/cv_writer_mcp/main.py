@@ -48,6 +48,7 @@ console = Console()
 # Configure transport and statelessness
 trspt: Literal["stdio", "streamable-http"] = "stdio"
 stateless_http = False
+
 match os.environ.get("TRANSPORT", trspt):
     case "streamable-http":
         trspt = "streamable-http"
@@ -55,6 +56,57 @@ match os.environ.get("TRANSPORT", trspt):
     case _:
         trspt = "stdio"
         stateless_http = False
+
+
+# ============================================================================
+# SHARED HELPER FUNCTIONS (reduce duplication between MCP tools and CLI)
+# ============================================================================
+
+
+def _initialize_pipeline_orchestrator(config: ServerConfig) -> CVPipelineOrchestrator:
+    """Initialize all pipeline components and return orchestrator.
+
+    Used by both MCP tools and CLI commands to avoid duplication.
+
+    Args:
+        config: Server configuration
+
+    Returns:
+        Initialized CVPipelineOrchestrator with all components
+    """
+    md2latex = MD2LaTeXAgent()
+    latex_expert = LaTeXExpert(config=config)
+    style_coordinator = PDFStyleCoordinator()
+    return CVPipelineOrchestrator(
+        md2latex_agent=md2latex,
+        latex_expert=latex_expert,
+        style_coordinator=style_coordinator,
+        config=config,
+    )
+
+
+def _validate_prerequisites(
+    check_openai: bool = True, check_latex: bool = True, config: ServerConfig | None = None
+) -> None:
+    """Validate prerequisites for CV generation.
+
+    Args:
+        check_openai: Whether to check for OpenAI API key
+        check_latex: Whether to check LaTeX installation
+        config: Server config (required if check_latex=True)
+
+    Raises:
+        ValueError: If prerequisites are not met
+    """
+    if check_openai and not os.getenv("OPENAI_API_KEY"):
+        raise ValueError("OPENAI_API_KEY environment variable is required")
+
+    if check_latex:
+        if not config:
+            raise ValueError("Config required for LaTeX installation check")
+        latex_expert = LaTeXExpert(config=config)
+        if not latex_expert.check_latex_installation():
+            raise ValueError("LaTeX is not installed or not accessible")
 
 
 def create_config(debug: bool = False) -> ServerConfig:
@@ -831,6 +883,230 @@ def fix_style(
             "   • Check that your PDF and LaTeX files exist and are accessible"
         )
         console.print("   • Verify your OpenAI API key is valid")
+        raise typer.Exit(1) from e
+
+
+@app.command(name="generate-cv-from-markdown")
+def generate_cv_from_markdown_cli(
+    markdown_file: str = typer.Argument(
+        ..., help="Path to the markdown file to convert"
+    ),
+    output: str = typer.Option(
+        "", "--output", "-o", help="Custom output filename for final PDF"
+    ),
+    variants: int = typer.Option(
+        1,
+        "--variants",
+        "-v",
+        help="Number of style variants to generate per iteration (default: 1)",
+    ),
+    max_style_iter: int = typer.Option(
+        1,
+        "--max-style-iter",
+        "-i",
+        help="Maximum number of style improvement iterations (default: 1)",
+    ),
+    max_compile_attempts: int = typer.Option(
+        3, "--max-compile", "-c", help="Maximum compilation attempts (default: 3)"
+    ),
+    no_enable_style: bool = typer.Option(
+        False, "--no-enable-style", help="Disable style improvement phase"
+    ),
+    quality: bool = typer.Option(
+        False, "--quality", help="Force enable quality judge even with 1 variant"
+    ),
+    debug: bool = typer.Option(False, "--debug", help="Run in debug mode"),
+) -> None:
+    """Complete end-to-end CV generation: Markdown → LaTeX → PDF → Style → Final PDF.
+
+    This is the PRIMARY COMMAND for complete CV generation with all phases.
+
+    Usage Examples:
+    - Fast mode (default):     pixi run generate-cv-fast
+    - Quality mode:            --variants 2 (judge auto-enabled)
+    - Iterative mode:          --max-style-iter 3 --variants 2
+    """
+    # Create config and setup logging
+    config = create_config(debug)
+    setup_logging(config.log_level)
+
+    console.print("[bold blue]🚀 Starting Complete CV Generation Pipeline[/bold blue]")
+    console.print(f"[blue]📄 Input: {markdown_file}[/blue]")
+
+    # Check if markdown file exists and read content
+    md_path = Path(markdown_file)
+    if not md_path.exists():
+        console.print(f"[red]❌ Error: Markdown file not found at '{markdown_file}'[/red]")
+        raise typer.Exit(1)
+
+    try:
+        markdown_content = md_path.read_text(encoding="utf-8")
+    except Exception as e:
+        console.print(f"[red]❌ Error reading markdown file: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Validate prerequisites using shared helper
+    try:
+        _validate_prerequisites(check_openai=True, check_latex=True, config=config)
+    except ValueError as e:
+        console.print(f"[red]❌ Error: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Initialize pipeline using shared helper
+    console.print("[blue]🔧 Initializing pipeline components...[/blue]")
+    orchestrator = _initialize_pipeline_orchestrator(config)
+    console.print("[green]✅ All components initialized[/green]")
+
+    # Run the pipeline
+    try:
+        # Handle asyncio loop
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        # Determine quality validation setting
+        enable_quality = True if quality else None  # Auto by default
+
+        result = loop.run_until_complete(
+            orchestrator.generate_cv_from_markdown(
+                markdown_content=markdown_content,
+                output_filename=output,
+                enable_style_improvement=not no_enable_style,
+                max_compile_attempts=max_compile_attempts,
+                max_style_iterations=max_style_iter,
+                num_style_variants=variants,
+                enable_quality_validation=enable_quality,
+            )
+        )
+
+        if result.status == CompletionStatus.SUCCESS:
+            console.print("[green]✅ CV generation completed successfully![/green]")
+            if result.final_pdf_url:
+                console.print(f"[blue]📄 Final PDF: {result.final_pdf_url}[/blue]")
+            if result.final_tex_url:
+                console.print(f"[blue]📝 Final LaTeX: {result.final_tex_url}[/blue]")
+            console.print(f"[blue]⏱️  Total time: {result.total_time:.2f}s[/blue]")
+
+            # Build diagnostics summary from result (not response)
+            parts = []
+            if result.conversion_time:
+                parts.append(f"Conversion: {result.conversion_time:.2f}s")
+            parts.append(
+                f"Compilation: {result.compilation_diagnostics.successful_compilations} success, "
+                f"{result.compilation_diagnostics.failed_compilations} failed"
+            )
+            if result.style_diagnostics:
+                parts.append(
+                    f"Style: {result.style_diagnostics.iterations_completed} iterations, "
+                    f"{result.style_diagnostics.total_variants_generated} variants"
+                )
+            console.print(f"[blue]📊 Diagnostics: {' | '.join(parts)}[/blue]")
+        else:
+            console.print(f"[red]❌ Pipeline failed: {result.message}[/red]")
+            raise typer.Exit(1)
+
+    except Exception as e:
+        console.print(f"[red]❌ Error during pipeline execution: {e}[/red]")
+        raise typer.Exit(1) from e
+
+
+@app.command(name="compile-and-improve-style")
+def compile_and_improve_style_cli(
+    tex_file: str = typer.Argument(..., help="LaTeX file to compile and improve"),
+    output: str = typer.Option(
+        "", "--output", "-o", help="Custom output filename for final PDF"
+    ),
+    variants: int = typer.Option(
+        1, "--variants", "-v", help="Number of style variants (default: 1)"
+    ),
+    max_style_iter: int = typer.Option(
+        1, "--max-style-iter", "-i", help="Max style iterations (default: 1)"
+    ),
+    max_compile_attempts: int = typer.Option(
+        3, "--max-compile", "-c", help="Max compilation attempts (default: 3)"
+    ),
+    quality: bool = typer.Option(
+        False, "--quality", help="Force enable quality judge"
+    ),
+    debug: bool = typer.Option(False, "--debug", help="Run in debug mode"),
+) -> None:
+    """Compile LaTeX and improve styling: LaTeX → PDF → Style → Final PDF.
+
+    Takes an existing LaTeX file, compiles it, and improves the styling.
+    """
+    # Create config and setup logging
+    config = create_config(debug)
+    setup_logging(config.log_level)
+
+    console.print("[bold blue]🚀 Starting Compile & Improve Pipeline[/bold blue]")
+    console.print(f"[blue]📄 Input: {tex_file}[/blue]")
+
+    # Check if tex file exists
+    tex_path = Path(tex_file)
+    if not tex_path.exists():
+        console.print(f"[red]❌ Error: LaTeX file not found at '{tex_file}'[/red]")
+        raise typer.Exit(1)
+
+    # Validate prerequisites using shared helper
+    try:
+        _validate_prerequisites(check_openai=True, check_latex=True, config=config)
+    except ValueError as e:
+        console.print(f"[red]❌ Error: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Initialize pipeline using shared helper
+    console.print("[blue]🔧 Initializing pipeline components...[/blue]")
+    orchestrator = _initialize_pipeline_orchestrator(config)
+    console.print("[green]✅ All components initialized[/green]")
+
+    # Run the pipeline
+    try:
+        # Handle asyncio loop
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        enable_quality = True if quality else None
+
+        result = loop.run_until_complete(
+            orchestrator.compile_and_improve_style(
+                tex_filename=tex_path.name,
+                output_filename=output,
+                max_compile_attempts=max_compile_attempts,
+                max_style_iterations=max_style_iter,
+                num_style_variants=variants,
+                enable_quality_validation=enable_quality,
+            )
+        )
+
+        if result.status == CompletionStatus.SUCCESS:
+            console.print("[green]✅ Compile & improve completed![/green]")
+            if result.final_pdf_url:
+                console.print(f"[blue]📄 Final PDF: {result.final_pdf_url}[/blue]")
+            console.print(f"[blue]⏱️  Total time: {result.total_time:.2f}s[/blue]")
+
+            # Build diagnostics summary
+            parts = []
+            parts.append(
+                f"Compilation: {result.compilation_diagnostics.successful_compilations} success, "
+                f"{result.compilation_diagnostics.failed_compilations} failed"
+            )
+            if result.style_diagnostics:
+                parts.append(
+                    f"Style: {result.style_diagnostics.iterations_completed} iterations, "
+                    f"{result.style_diagnostics.total_variants_generated} variants"
+                )
+            console.print(f"[blue]📊 Diagnostics: {' | '.join(parts)}[/blue]")
+        else:
+            console.print(f"[red]❌ Pipeline failed: {result.message}[/red]")
+            raise typer.Exit(1)
+
+    except Exception as e:
+        console.print(f"[red]❌ Error: {e}[/red]")
         raise typer.Exit(1) from e
 
 

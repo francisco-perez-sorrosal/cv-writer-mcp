@@ -8,26 +8,27 @@ from pydantic import BaseModel, Field
 from ..models import CompletionStatus
 
 
-class PageCaptureRequest(BaseModel):
-    """Request model for page capture agent."""
+class VisualCriticRequest(BaseModel):
+    """Request model for visual critic agent."""
 
     pdf_file_path: str = Field(
-        ..., description="Path to the PDF file to capture and analyze"
+        ...,
+        description="Path to the PDF file to convert to screenshots for visual critique",
     )
     num_pages: int | None = Field(
         default=None,
-        description="Maximum number of pages to capture (None for auto-detect)",
+        description="Maximum number of pages to analyze (None for all pages)",
     )
 
 
-class PageCaptureResponse(BaseModel):
-    """Response model for page capture agent."""
+class VisualCriticResponse(BaseModel):
+    """Response model for visual critic agent."""
 
     status: CompletionStatus = Field(
-        ..., description="Whether the page capture and analysis was successful"
+        ..., description="Whether the visual critique was successful"
     )
     pages_analyzed: int = Field(
-        default=0, description="Number of pages that were captured and analyzed"
+        default=0, description="Number of screenshots analyzed by the visual critic"
     )
     visual_issues: list[str] = Field(
         default_factory=list,
@@ -35,34 +36,35 @@ class PageCaptureResponse(BaseModel):
     )
     suggested_fixes: list[str] = Field(
         default_factory=list,
-        description="Detailed LaTeX fixes suggested for each identified issue",
+        description="High-level improvement suggestions (goals, not implementation details)",
     )
     analysis_summary: str = Field(
         default="",
-        description="Overall assessment and summary of the CV formatting analysis",
+        description="Overall visual quality assessment and critique summary",
     )
     message: str | None = Field(
         None, description="Status message with analysis details or error information"
     )
 
 
-class PageCaptureOutput(BaseModel):
-    """Structured output from the page capture agent."""
+class VisualCriticOutput(BaseModel):
+    """Structured output from the visual critic agent."""
 
     status: CompletionStatus = Field(
-        ..., description="Whether the page capture and analysis was successful"
+        ..., description="Whether the visual critique was successful"
     )
     pages_analyzed: int = Field(
-        ..., description="Number of pages that were captured and analyzed"
+        ..., description="Number of screenshots analyzed by the visual critic"
     )
     visual_issues: list[str] = Field(
         ..., description="List of all visual formatting issues found across all pages"
     )
     suggested_fixes: list[str] = Field(
-        ..., description="Detailed LaTeX fixes suggested for each identified issue"
+        ...,
+        description="High-level improvement suggestions (goals, not implementation details)",
     )
     analysis_summary: str = Field(
-        ..., description="Overall assessment and summary of the CV formatting analysis"
+        ..., description="Overall visual quality assessment and critique summary"
     )
 
 

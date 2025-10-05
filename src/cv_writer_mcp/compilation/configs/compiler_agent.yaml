@@ -1,6 +1,6 @@
 agent_metadata:
   name: "LaTeX Compiler Agent"
-  description: "LaTeX compilation agent using AI agents with shell command tools"
+  description: "Executes pdflatex compilation using latex2pdf_tool and provides structured error reporting with detailed log analysis"
   model: "gpt-5-mini"
   output_type: "CompilerAgentOutput"
 

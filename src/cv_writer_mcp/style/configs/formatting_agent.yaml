@@ -4,6 +4,67 @@ agent_metadata:
   model: "gpt-5-mini"
   output_type: "FormattingOutput"
 
+# Variant strategy definitions for multi-variant style improvement
+variant_strategies:
+  conservative:
+    name: "CONSERVATIVE APPROACH"
+    when_to_use: "First iteration, formal CVs, risk-averse optimization"
+    focus_areas:
+      - "Fix only glaring visual issues (excessive spacing, obvious inconsistencies)"
+      - "Make minimal structural changes to preserve original organization"
+      - "Prefer safe, proven LaTeX patterns that ensure compilation safety"
+      - "Apply spacing reduction conservatively: only reduce spacing >1em to 0.3-0.5em"
+      - "Keep existing ModernCV command structure unless clearly broken"
+    spacing_guideline: "Reduce only excessive gaps (>1em) → moderate gaps (0.3-0.5em)"
+    label_guideline: "Shorten only if >12 characters and redundant"
+    structure_guideline: "Maintain existing section organization and command usage"
+    font_guideline: "Remove only if causing obvious inconsistency"
+    risk_level: "LOW - prioritize compilation safety and readability"
+    examples:
+      - "\\vspace{2em} → \\vspace{0.5em} (obvious waste)"
+      - "Keep \\vspace{0.5em} as-is (reasonable spacing)"
+      - 'Fix "Programming Languages" label only if also redundant in content'
+
+  aggressive:
+    name: "AGGRESSIVE APPROACH"
+    when_to_use: "Space-constrained CVs, multiple iterations with judge feedback, quality-driven optimization"
+    focus_areas:
+      - "Pursue bold formatting improvements and comprehensive spacing reduction"
+      - "Maximize space efficiency with substantial spacing reductions throughout"
+      - "Willing to significantly restructure sections for optimal layout"
+      - "Apply aggressive spacing reduction: aim for compact itemize everywhere"
+      - "Eliminate all redundancy and inefficient label usage"
+    spacing_guideline: "Reduce ALL spacing to minimum viable (0.2-0.3em max)"
+    label_guideline: "Shorten aggressively (≤8 chars) or use empty labels {} when possible"
+    structure_guideline: "Restructure sections to use most space-efficient ModernCV commands"
+    font_guideline: "Remove ALL sizing commands from content (keep only in headers)"
+    risk_level: "MEDIUM - willing to make bold changes for visual impact"
+    examples:
+      - "\\vspace{0.5em} → \\vspace{0.2em} (tighten all spacing)"
+      - '"Programming Languages" → "Code" or "" (empty label)'
+      - "Convert standalone itemize to \\cventry or \\cvitem with nested compact itemize"
+      - "Apply [noitemsep,topsep=0pt,parsep=0pt,partopsep=0pt] to ALL itemize environments"
+
+  balanced:
+    name: "BALANCED APPROACH (recommended default)"
+    when_to_use: "Standard CV optimization, balanced quality/safety tradeoff"
+    focus_areas:
+      - "Balance spacing optimization with readability preservation"
+      - "Apply moderate structural changes where clearly beneficial"
+      - "Mix conservative patterns with selective aggressive improvements"
+      - "Focus on overall document coherence and professionalism"
+      - "Optimize for professional appearance while maintaining safety"
+    spacing_guideline: "Reduce moderate to large gaps (≥0.5em) → compact (0.3em)"
+    label_guideline: "Shorten if >10 characters and clearly redundant"
+    structure_guideline: "Fix inconsistencies but preserve working sections"
+    font_guideline: "Remove if causing inconsistency, keep if intentional"
+    risk_level: "LOW-MEDIUM - calculated improvements with safety margin"
+    examples:
+      - "\\vspace{1em} → \\vspace{0.3em} (optimize larger gaps)"
+      - "\\vspace{0.3em} → keep as-is (already reasonable)"
+      - '"Technical Skills" → "Tech" if also used in content prefix'
+      - "Apply compact itemize where spacing is excessive, keep normal where appropriate"
+
 instructions: |
   You are a LaTeX/ModernCV formatting specialist. Your role is to implement visual formatting improvements that optimize layout, consistency, and space efficiency while ensuring the document compiles successfully.
 

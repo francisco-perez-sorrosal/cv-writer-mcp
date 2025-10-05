@@ -24,7 +24,7 @@ class FormattingAgent:
         self.model = model or self.agent_config["agent_metadata"]["model"]
 
     def _get_variant_strategy(self, variant_id: int) -> str:
-        """Get variant-specific strategy instructions.
+        """Get variant-specific strategy instructions from YAML config.
 
         Args:
             variant_id: ID of the variant (1, 2, 3, ...)
@@ -32,28 +32,38 @@ class FormattingAgent:
         Returns:
             Strategy-specific instructions for the prompt
         """
-        strategies = {
-            1: """Strategy: CONSERVATIVE APPROACH
-- Focus on spacing optimization and consistency fixes only
-- Make minimal structural changes to preserve original organization
-- Prefer safe, proven LaTeX patterns that ensure compilation safety
-- Apply spacing reduction conservatively (only obvious excessive spacing)
-- Prioritize maintaining document structure and readability""",
-            2: """Strategy: AGGRESSIVE APPROACH
-- Pursue bold formatting improvements and section restructuring
-- Maximize space efficiency with substantial spacing reductions
-- Willing to significantly restructure sections for optimal layout
-- Apply aggressive spacing reduction throughout document
-- Prioritize visual impact and space optimization""",
-            3: """Strategy: BALANCED APPROACH (recommended)
-- Balance spacing optimization with readability preservation
-- Apply moderate structural changes where clearly beneficial
-- Mix conservative patterns with selective aggressive improvements
-- Focus on overall document coherence and professionalism
-- Optimize for professional appearance while maintaining safety""",
-        }
+        # Map variant IDs to strategy names
+        strategy_mapping = {1: "conservative", 2: "aggressive", 3: "balanced"}
+        strategy_name = strategy_mapping.get(variant_id, "balanced")
 
-        return strategies.get(variant_id, strategies[3])  # Default to balanced
+        # Get strategy from YAML config
+        strategies = self.agent_config.get("variant_strategies", {})
+        strategy = strategies.get(strategy_name, strategies.get("balanced", {}))
+
+        # Format strategy as text
+        if not strategy:
+            # Fallback if YAML strategies are missing
+            return "Strategy: BALANCED APPROACH - Use moderate improvements with safety margin"
+
+        focus_areas = "\n".join(f"- {area}" for area in strategy.get("focus_areas", []))
+        examples = "\n".join(f"- {ex}" for ex in strategy.get("examples", []))
+
+        return f"""Strategy: {strategy.get('name', 'Unknown')}
+
+**When to use**: {strategy.get('when_to_use', 'Not specified')}
+
+**Focus Areas**:
+{focus_areas}
+
+**Specific Guidelines**:
+- Spacing: {strategy.get('spacing_guideline', 'Not specified')}
+- Labels: {strategy.get('label_guideline', 'Not specified')}
+- Structure: {strategy.get('structure_guideline', 'Not specified')}
+- Font sizing: {strategy.get('font_guideline', 'Not specified')}
+- Risk level: {strategy.get('risk_level', 'Not specified')}
+
+**Examples**:
+{examples}"""
 
     def _create_agent(self, variant_id: int = 1) -> Agent:
         """Create formatting agent instance.
@@ -84,7 +94,7 @@ class FormattingAgent:
         visual_analysis_results: str,
         suggested_fixes: list[str],
         variant_id: int,
-        iteration_feedback: str,
+        iteration_feedback: str | None,
     ) -> str:
         """Build complete prompt with all context.
 
@@ -93,7 +103,7 @@ class FormattingAgent:
             visual_analysis_results: Analysis from page capture
             suggested_fixes: List of suggested fixes
             variant_id: Variant ID for strategy selection
-            iteration_feedback: Feedback from previous iteration (if any)
+            iteration_feedback: Feedback from previous iteration (None if first iteration)
 
         Returns:
             Complete prompt string with all placeholders replaced
@@ -103,8 +113,8 @@ class FormattingAgent:
         # Get variant strategy
         variant_strategy = self._get_variant_strategy(variant_id)
 
-        # Format iteration feedback
-        if iteration_feedback:
+        # Format iteration feedback - explicit None check
+        if iteration_feedback is not None and iteration_feedback.strip():
             feedback_text = f"""Previous iteration feedback from quality judge:
 {iteration_feedback}
 
@@ -132,7 +142,7 @@ Please incorporate this feedback to improve the formatting."""
         visual_analysis_results: str,
         suggested_fixes: list[str],
         variant_id: int = 1,
-        iteration_feedback: str = "",
+        iteration_feedback: str | None = None,
     ) -> FormattingOutput:
         """Implement formatting improvements with variant strategy.
 
@@ -141,7 +151,7 @@ Please incorporate this feedback to improve the formatting."""
             visual_analysis_results: Analysis results from page capture agent
             suggested_fixes: List of suggested fixes from analysis
             variant_id: Variant ID for strategy differentiation (default: 1)
-            iteration_feedback: Feedback from quality judge in previous iteration (default: "")
+            iteration_feedback: Feedback from quality judge in previous iteration (None if first iteration)
 
         Returns:
             FormattingOutput with improved LaTeX and metadata

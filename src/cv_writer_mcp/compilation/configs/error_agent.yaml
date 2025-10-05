@@ -1,9 +1,9 @@
 # Compilation Error Agent Configuration
-agent:
+agent_metadata:
   name: "Compilation Error Agent"
   description: "Specialized agent for fixing LaTeX compilation errors"
   version: "1.0.0"
-  model: "gpt-5-mini"
+  model: "gpt-5-mini"  # Using gpt-5-mini for cost-effective error fixing
   output_type: "CompilationErrorOutput"
 
 instructions: |
@@ -62,7 +62,6 @@ prompt_template: |
   <error_information>
   File: {tex_file_path}
   Total Errors: {error_count}
-  Warnings: {warning_count}
   Exit Code: {exit_code}
 
   Error Log:
@@ -81,9 +80,14 @@ prompt_template: |
   <output_requirements>
   Provide structured output:
   - status: "success" or "failure"
-  - fixes_applied: [{{line: int, error_type: string, description: string}}, ...]
+  - fixes_applied: List of ErrorFix objects, each with:
+    * error_type: Type of error fixed (e.g., "Unmatched braces", "Undefined control sequence")
+    * error_description: Description of the specific error encountered
+    * fix_applied: Explanation of what fix was applied
+    * line_number: Line number where the fix was applied (null if not applicable)
+    * confidence: Confidence level of the fix (0.0 to 1.0, default 1.0)
   - file_modified: true/false
-  - total_fixes: number of fixes
+  - total_fixes: number of fixes applied
   - message: Summary of what was accomplished
   - remaining_issues: ["description of unfixable issue", ...]
   - corrected_content: Complete fixed LaTeX content (or empty string if no fixes)

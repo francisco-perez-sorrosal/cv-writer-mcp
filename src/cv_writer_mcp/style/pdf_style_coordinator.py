@@ -18,8 +18,8 @@ from .models import (
     StyleIterationResult,
     VariantResult,
 )
-from .page_capture_agent import PageCaptureAgent, PageCaptureRequest
 from .quality_agent import StyleQualityAgent
+from .visual_critic_agent import VisualCriticAgent, VisualCriticRequest
 
 
 class PDFStyleCoordinator:
@@ -35,9 +35,7 @@ class PDFStyleCoordinator:
         self.model = model or "gpt-5-mini"
 
         # Initialize all agents
-        self.page_capture_agent = PageCaptureAgent(
-            api_key=self.api_key, model=self.model
-        )
+        self.visual_critic = VisualCriticAgent(api_key=self.api_key, model=self.model)
         self.formatting_agent = FormattingAgent(api_key=self.api_key, model=self.model)
         self.quality_agent = StyleQualityAgent(api_key=self.api_key, model=self.model)
 
@@ -110,7 +108,7 @@ class PDFStyleCoordinator:
         # Initialize state
         current_pdf = initial_pdf_path
         current_tex_content = initial_tex_path.read_text(encoding="utf-8")
-        iteration_feedback = ""
+        iteration_feedback: str | None = None  # None for first iteration, set by judge feedback
         best_result = None
 
         logger.info("🎨 Starting multi-variant style improvement")
@@ -270,11 +268,11 @@ class PDFStyleCoordinator:
 
     async def _capture_and_analyze_pdf(self, pdf_path: Path):
         """Capture and analyze PDF pages."""
-        capture_request = PageCaptureRequest(
+        capture_request = VisualCriticRequest(
             pdf_file_path=str(pdf_path.absolute()),
             num_pages=None,
         )
-        return await self.page_capture_agent.capture_and_analyze(capture_request)
+        return await self.visual_critic.critique(capture_request)
 
     async def _generate_variants_parallel(
         self,
@@ -282,7 +280,7 @@ class PDFStyleCoordinator:
         current_tex_content: str,
         suggested_fixes: list[str],
         visual_analysis: str,
-        iteration_feedback: str,
+        iteration_feedback: str | None,
         latex_expert,
         max_compile_attempts: int,
         output_dir: Path,
@@ -312,7 +310,7 @@ class PDFStyleCoordinator:
         current_tex_content: str,
         suggested_fixes: list[str],
         visual_analysis: str,
-        iteration_feedback: str,
+        iteration_feedback: str | None,
         latex_expert: "LaTeXExpert | None",
         max_compile_attempts: int,
         output_dir: Path,
