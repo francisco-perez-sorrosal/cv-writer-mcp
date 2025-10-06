@@ -136,7 +136,7 @@ class SingleVariantEvaluationOutput(BaseModel):
     )
     quality_metrics: dict[str, float] = Field(
         ...,
-        description="Detailed quality metrics: spacing, consistency, readability, layout",
+        description="Quality metrics (0.0-1.0): design_coherence, spacing, consistency, readability. Keys must be: 'design_coherence', 'spacing', 'consistency', 'readability'",
     )
 
 
@@ -144,22 +144,51 @@ class VariantEvaluationOutput(BaseModel):
     """Judge evaluation of multiple variants (when num_variants >= 2)."""
 
     best_variant_id: int = Field(
-        ..., description="ID of the best variant among all evaluated"
+        ..., description="ID of the best variant among all evaluated (1, 2, 3, etc.)"
     )
     score: Literal["pass", "needs_improvement", "fail"] = Field(
-        ..., description="Quality score for the best variant"
+        ..., description="Quality score for the best variant based on overall weighted score"
     )
     feedback: str = Field(
-        ..., description="Specific feedback for improvements (for next iteration)"
+        ..., description="Specific feedback for improvements in next iteration (if needed)"
     )
     quality_metrics: dict[str, float] = Field(
-        ..., description="Quality metrics for the best variant"
+        ...,
+        description="Quality metrics for the BEST variant (0.0-1.0). Keys: 'design_coherence', 'spacing', 'consistency', 'readability'",
     )
     comparison_summary: str = Field(
-        ..., description="Explanation of why best_variant was selected"
+        ...,
+        description="Scientific explanation of selection: compare variants quantitatively, explain trade-offs, show weighted score calculation, justify winner",
     )
     all_variant_scores: dict[int, dict[str, float]] = Field(
-        ..., description="Detailed scores for all variants evaluated"
+        ...,
+        description="Detailed scores for ALL variants. Format: {1: {'design_coherence': 0.X, 'spacing': 0.X, ...}, 2: {...}, ...}",
+    )
+
+
+class VariantValidation(BaseModel):
+    """Result of visual validation for a single variant.
+
+    Tracks whether a variant has critical regressions (new visual bugs introduced
+    during formatting) and whether refinement was attempted/successful.
+    """
+
+    variant_id: int = Field(..., description="Variant ID being validated")
+    has_critical_regressions: bool = Field(
+        ..., description="Whether variant has critical NEW issues not in original"
+    )
+    visual_issues: list[str] = Field(
+        default_factory=list, description="All visual issues found in variant"
+    )
+    critical_issues: list[str] = Field(
+        default_factory=list,
+        description="Subset of issues that are critical regressions",
+    )
+    was_refined: bool = Field(
+        default=False, description="Whether refinement was attempted"
+    )
+    refinement_successful: bool | None = Field(
+        None, description="Whether refinement fixed the issues (None if not refined)"
     )
 
 
@@ -179,6 +208,9 @@ class VariantResult(BaseModel):
         None,
         description="Time taken to compile in seconds (None if compilation skipped)",
     )
+    validation: VariantValidation | None = Field(
+        None, description="Validation result if visual validation was performed"
+    )
 
 
 class EvaluationResult(BaseModel):
@@ -188,6 +220,15 @@ class EvaluationResult(BaseModel):
     best_variant: VariantResult = Field(..., description="The best variant result")
     score: str = Field(..., description="Quality score")
     feedback: str = Field(..., description="Feedback for next iteration")
+    quality_metrics: dict[str, float] | None = Field(
+        None, description="Quality metrics for best variant (design_coherence, spacing, consistency, readability)"
+    )
+    comparison_summary: str | None = Field(
+        None, description="Judge's detailed explanation of variant selection (multi-variant only)"
+    )
+    all_variant_scores: dict[int, dict[str, float]] | None = Field(
+        None, description="Scores for all variants (multi-variant only)"
+    )
 
 
 class StyleDiagnostics(BaseModel):
@@ -216,6 +257,18 @@ class StyleDiagnostics(BaseModel):
     )
     best_variant_per_iteration: list[int] = Field(
         ..., description="Best variant ID selected in each iteration"
+    )
+    variants_validated_per_iteration: list[int] = Field(
+        default_factory=list,
+        description="Number of variants validated per iteration (if validation enabled)",
+    )
+    variants_with_issues_per_iteration: list[int] = Field(
+        default_factory=list,
+        description="Number of variants with critical regressions per iteration",
+    )
+    variants_refined_per_iteration: list[int] = Field(
+        default_factory=list,
+        description="Number of variants that underwent refinement per iteration",
     )
 
 

@@ -17,6 +17,7 @@ from .models import (
     StyleDiagnostics,
     StyleIterationResult,
     VariantResult,
+    VariantValidation,
 )
 from .quality_agent import StyleQualityAgent
 from .visual_critic_agent import VisualCriticAgent, VisualCriticRequest
@@ -52,12 +53,14 @@ class PDFStyleCoordinator:
         num_variants: int = 1,
         max_compile_attempts: int = 5,
         enable_quality_validation: bool | None = None,
+        enable_variant_validation: bool = True,
+        enable_variant_refinement: bool = True,
         output_dir: Path | None = None,
     ) -> StyleIterationResult:
         """Multi-iteration style improvement with N-variant strategy and quality judge.
 
         Supports two modes:
-        1. With compilation (latex_expert provided): Generate variants → Compile → Judge
+        1. With compilation (latex_expert provided): Generate variants → Compile → Validate → Judge
         2. Without compilation (latex_expert=None): Generate LaTeX variants only
 
         Args:
@@ -68,6 +71,8 @@ class PDFStyleCoordinator:
             num_variants: Number of variants to generate per iteration (default: 1)
             max_compile_attempts: Max compilation attempts per variant (default: 5, ignored if no compilation)
             enable_quality_validation: Enable quality judge (None=auto: enabled if num_variants>=2)
+            enable_variant_validation: Enable visual validation gate for variants (default: True)
+            enable_variant_refinement: Enable refinement of variants with critical issues (default: True)
             output_dir: Directory for variant outputs (default: ./output/style_variants)
 
         Returns:
@@ -181,12 +186,59 @@ class PDFStyleCoordinator:
                         iteration,
                     )
 
-            # Step 4: Quality Evaluation
+            # Step 3.5: Visual Validation & Refinement Gate (NEW)
+            if enable_variant_validation and len(successful_variants) > 0:
+                logger.info("")
+                logger.info("─" * 70)
+                logger.info(f"🔍 VISUAL VALIDATION GATE ({len(successful_variants)} variant(s))")
+                logger.info("─" * 70)
+
+                refined_variants = await self._validate_and_refine_variants(
+                    variants=successful_variants,
+                    original_issues=capture_result.visual_issues,
+                    latex_expert=latex_expert,
+                    max_compile_attempts=max_compile_attempts,
+                    output_dir=output_dir,
+                    iteration=iteration,
+                    enable_refinement=enable_variant_refinement,
+                )
+
+                # Track diagnostics
+                variants_with_issues = sum(
+                    1 for v in refined_variants if v.validation and v.validation.has_critical_regressions
+                )
+                variants_refined = sum(
+                    1 for v in refined_variants if v.validation and v.validation.was_refined
+                )
+
+                diagnostics.variants_validated_per_iteration.append(len(refined_variants))
+                diagnostics.variants_with_issues_per_iteration.append(variants_with_issues)
+                diagnostics.variants_refined_per_iteration.append(variants_refined)
+
+                # Log detailed validation results
+                for v in refined_variants:
+                    if v.validation and v.validation.has_critical_regressions:
+                        if v.validation.was_refined:
+                            status = "✅ REFINED" if v.validation.refinement_successful else "⚠️  STILL HAS ISSUES"
+                        else:
+                            status = "⚠️  NOT REFINED"
+                        logger.warning(
+                            f"  Variant {v.variant_id}: {status} - {len(v.validation.critical_issues)} critical issue(s)"
+                        )
+
+                logger.info("")
+            else:
+                refined_variants = successful_variants
+                diagnostics.variants_validated_per_iteration.append(0)
+                diagnostics.variants_with_issues_per_iteration.append(0)
+                diagnostics.variants_refined_per_iteration.append(0)
+
+            # Step 4: Quality Evaluation (with refined variants)
             eval_result = await self._evaluate_quality(
                 enable_quality_validation=enable_quality_validation,
                 num_variants=num_variants,
                 original_pdf=current_pdf,
-                successful_variants=successful_variants,
+                successful_variants=refined_variants,  # Use refined variants instead of raw ones
                 improvement_goals=capture_result.visual_issues,
                 iteration=iteration,
             )
@@ -200,6 +252,38 @@ class PDFStyleCoordinator:
 
             logger.info(f"🏆 Best variant: {eval_result.best_variant_id}")
             logger.info(f"📊 Judge score: {eval_result.score}")
+
+            # Display quality metrics
+            if eval_result.quality_metrics:
+                logger.info(f"📈 Quality Metrics (Best Variant {eval_result.best_variant_id}):")
+                for metric, score in eval_result.quality_metrics.items():
+                    logger.info(f"     {metric}: {score:.2f}")
+
+            # Display comparison reasoning (multi-variant only)
+            if eval_result.comparison_summary:
+                logger.info(f"")
+                logger.info(f"🧠 Judge Reasoning:")
+                # Split summary into lines for better readability
+                for line in eval_result.comparison_summary.split('. '):
+                    if line.strip():
+                        logger.info(f"   {line.strip()}.")
+                logger.info(f"")
+
+            # Display all variant scores (multi-variant only)
+            if eval_result.all_variant_scores:
+                logger.info(f"📊 All Variant Scores:")
+                for variant_id, scores in sorted(eval_result.all_variant_scores.items()):
+                    # Calculate weighted score
+                    weighted = (scores.get('design_coherence', 0) * 0.30 +
+                               scores.get('spacing', 0) * 0.25 +
+                               scores.get('consistency', 0) * 0.25 +
+                               scores.get('readability', 0) * 0.20)
+                    logger.info(f"   Variant {variant_id}: coherence={scores.get('design_coherence', 0):.2f}, "
+                               f"spacing={scores.get('spacing', 0):.2f}, "
+                               f"consistency={scores.get('consistency', 0):.2f}, "
+                               f"readability={scores.get('readability', 0):.2f} "
+                               f"→ weighted={weighted:.3f}")
+                logger.info(f"")
 
             # Step 5: Decision
             if eval_result.score == "pass":
@@ -444,6 +528,9 @@ class PDFStyleCoordinator:
                 best_variant=best,
                 score=judge_output.score,
                 feedback=judge_output.feedback,
+                quality_metrics=judge_output.quality_metrics,
+                comparison_summary=judge_output.comparison_summary,
+                all_variant_scores=judge_output.all_variant_scores,
             )
         else:
             # Single variant evaluation
@@ -461,7 +548,351 @@ class PDFStyleCoordinator:
                 best_variant=best,
                 score=single_judge_output.score,
                 feedback=single_judge_output.feedback,
+                quality_metrics=single_judge_output.quality_metrics,
+                comparison_summary=None,  # Single variant has no comparison
+                all_variant_scores=None,  # Single variant has no comparison
             )
+
+    async def _validate_variant(
+        self, variant: VariantResult
+    ) -> VariantValidation:
+        """Visually validate a single variant PDF to detect issues.
+
+        Args:
+            variant: The variant to validate
+
+        Returns:
+            Validation result with issues found
+        """
+        if variant.pdf_path is None:
+            logger.warning(
+                f"  Variant {variant.variant_id}: No PDF to validate (compilation was skipped)"
+            )
+            return VariantValidation(
+                variant_id=variant.variant_id,
+                has_critical_regressions=False,
+                visual_issues=[],
+                critical_issues=[],
+            )
+
+        # Critique variant PDF
+        critique_result = await self.visual_critic.critique(
+            VisualCriticRequest(pdf_file_path=str(variant.pdf_path))
+        )
+
+        return VariantValidation(
+            variant_id=variant.variant_id,
+            has_critical_regressions=False,  # Will be updated by caller
+            visual_issues=critique_result.visual_issues,
+            critical_issues=[],  # Will be updated by caller
+        )
+
+    def _identify_critical_regressions(
+        self, variant_issues: list[str], original_issues: list[str]
+    ) -> tuple[bool, list[str]]:
+        """Identify if variant has critical NEW issues (regressions).
+
+        Compares variant issues against original issues to find regressions.
+        A regression is a critical issue that wasn't in the original PDF.
+
+        Args:
+            variant_issues: Issues found in the variant
+            original_issues: Issues from the original PDF
+
+        Returns:
+            Tuple of (has_critical_regressions, list_of_critical_issues)
+        """
+        # Critical issue keywords that indicate serious visual bugs
+        critical_keywords = [
+            "page jump",
+            "page break",
+            "awkward break",
+            "content jump",
+            "discontinuity",
+            "overflow",
+            "cut off",
+            "truncated",
+            "overlapping",
+            "collision",
+            "broken layout",
+            "layout break",
+            "missing content",
+            "lost content",
+            "unreadable",
+            "illegible",
+        ]
+
+        critical_issues = []
+
+        for issue in variant_issues:
+            issue_lower = issue.lower()
+
+            # Check if this issue is NEW (not in original)
+            is_new = not any(
+                self._semantic_similarity(issue_lower, orig.lower()) > 0.6
+                for orig in original_issues
+            )
+
+            # Check if it's CRITICAL
+            is_critical = any(keyword in issue_lower for keyword in critical_keywords)
+
+            if is_new and is_critical:
+                critical_issues.append(issue)
+                logger.debug(
+                    f"    Detected critical regression: {issue[:80]}{'...' if len(issue) > 80 else ''}"
+                )
+
+        return len(critical_issues) > 0, critical_issues
+
+    def _semantic_similarity(self, text1: str, text2: str) -> float:
+        """Simple semantic similarity check using keyword overlap.
+
+        Args:
+            text1: First text to compare
+            text2: Second text to compare
+
+        Returns:
+            Similarity score (0.0 to 1.0)
+        """
+        words1 = set(text1.split())
+        words2 = set(text2.split())
+
+        if not words1 or not words2:
+            return 0.0
+
+        # Jaccard similarity: intersection over union
+        return len(words1 & words2) / len(words1 | words2)
+
+    async def _refine_variant(
+        self,
+        variant: VariantResult,
+        validation: VariantValidation,
+        latex_expert,
+        max_compile_attempts: int,
+        output_dir: Path,
+        iteration: int,
+    ) -> VariantResult:
+        """Refine a variant to fix critical regressions.
+
+        Uses the Formatting Agent with a targeted refinement prompt to fix
+        the critical issues detected in validation.
+
+        Args:
+            variant: Variant to refine
+            validation: Validation result with critical issues
+            latex_expert: LaTeX compilation expert
+            max_compile_attempts: Max compilation attempts
+            output_dir: Output directory for refined files
+            iteration: Current iteration number
+
+        Returns:
+            Refined variant (or original if refinement fails)
+        """
+        from ..models import CompletionStatus
+
+        try:
+            logger.info(
+                f"    Refining variant {variant.variant_id} to fix {len(validation.critical_issues)} critical issue(s)..."
+            )
+
+            # Read current LaTeX content
+            latex_content = variant.tex_path.read_text(encoding="utf-8")
+
+            # Build refinement-specific visual analysis
+            refinement_analysis = f"""⚠️  CRITICAL REFINEMENT TASK ⚠️
+
+This variant (Variant {variant.variant_id}) was initially generated but visual analysis
+detected the following CRITICAL issues that MUST be fixed:
+
+{chr(10).join(f'- {issue}' for issue in validation.critical_issues)}
+
+IMPORTANT: These issues were NOT in the original document - they were INTRODUCED
+during the formatting improvements. Your task is to FIX these regressions while
+preserving the other improvements you made.
+
+Focus specifically on:
+- Fixing page breaks/jumps (ensure content flows naturally across pages)
+- Fixing spacing/overflow issues (prevent content from being cut off)
+- Ensuring no content is overlapping or causing layout collisions
+- Maintaining readability and professional appearance"""
+
+            # Call formatting agent for refinement
+            formatting_output = await self.formatting_agent.implement_fixes(
+                latex_content=latex_content,
+                visual_analysis_results=refinement_analysis,
+                suggested_fixes=validation.critical_issues,
+                variant_id=variant.variant_id,
+                iteration_feedback=None,  # No judge feedback for refinement
+            )
+
+            if formatting_output.status != CompletionStatus.SUCCESS:
+                logger.warning(
+                    f"    Variant {variant.variant_id}: Refinement formatting failed"
+                )
+                return variant  # Return original
+
+            # Save refined LaTeX
+            refined_tex_path = (
+                output_dir / f"iter{iteration}_variant{variant.variant_id}_refined.tex"
+            )
+            refined_tex_path.write_text(
+                formatting_output.improved_latex_content, encoding="utf-8"
+            )
+
+            # Compile refined variant
+            if latex_expert:
+                logger.info(f"    Compiling refined variant {variant.variant_id}...")
+                refined_pdf_path = (
+                    output_dir
+                    / f"iter{iteration}_variant{variant.variant_id}_refined.pdf"
+                )
+
+                from ..compilation.models import LaTeXEngine
+
+                compile_result = await latex_expert.orchestrate_compilation(
+                    tex_file_path=refined_tex_path,
+                    output_path=refined_pdf_path,
+                    engine=LaTeXEngine.PDFLATEX,
+                    max_attempts=max_compile_attempts,
+                )
+
+                if compile_result.status == CompletionStatus.SUCCESS:
+                    logger.info(
+                        f"    ✅ Variant {variant.variant_id} refined successfully"
+                    )
+                    # Create refined variant result
+                    refined_variant = VariantResult(
+                        variant_id=variant.variant_id,
+                        pdf_path=refined_pdf_path,
+                        tex_path=refined_tex_path,
+                        compilation_time=compile_result.compilation_time,
+                    )
+                    return refined_variant
+                else:
+                    logger.warning(
+                        f"    Variant {variant.variant_id}: Refined version failed to compile"
+                    )
+                    return variant  # Return original
+            else:
+                # No compilation - just return with refined tex
+                refined_variant = VariantResult(
+                    variant_id=variant.variant_id,
+                    pdf_path=None,
+                    tex_path=refined_tex_path,
+                    compilation_time=None,
+                )
+                return refined_variant
+
+        except Exception as e:
+            logger.error(f"    Variant {variant.variant_id}: Refinement failed: {e}")
+            return variant  # Return original on any error
+
+    async def _validate_and_refine_variants(
+        self,
+        variants: list[VariantResult],
+        original_issues: list[str],
+        latex_expert,
+        max_compile_attempts: int,
+        output_dir: Path,
+        iteration: int,
+        enable_refinement: bool = True,
+    ) -> list[VariantResult]:
+        """Validate variants and optionally refine those with critical regressions.
+
+        This is the main validation gate that:
+        1. Visually validates each variant
+        2. Identifies critical regressions (new bugs not in original)
+        3. Attempts to refine problematic variants (if enabled)
+        4. Returns variants with validation metadata attached
+
+        Args:
+            variants: Generated variants to validate
+            original_issues: Issues from original PDF (to detect regressions)
+            latex_expert: LaTeX compilation expert
+            max_compile_attempts: Max compilation attempts for refinement
+            output_dir: Output directory for refined files
+            iteration: Current iteration number
+            enable_refinement: Whether to attempt refinement of problematic variants
+
+        Returns:
+            Refined variants (with validation metadata attached)
+        """
+        refined_variants = []
+        variants_with_issues = 0
+        variants_refined = 0
+
+        for variant in variants:
+            logger.info(f"  Validating variant {variant.variant_id}...")
+
+            # Step 1: Visual validation
+            validation = await self._validate_variant(variant)
+
+            # Step 2: Identify critical regressions
+            has_critical, critical_issues = self._identify_critical_regressions(
+                validation.visual_issues, original_issues
+            )
+
+            validation.has_critical_regressions = has_critical
+            validation.critical_issues = critical_issues
+
+            # Step 3: Refine if needed
+            if has_critical:
+                variants_with_issues += 1
+                logger.warning(
+                    f"  ⚠️  Variant {variant.variant_id} has {len(critical_issues)} critical regression(s)"
+                )
+
+                if enable_refinement:
+                    variants_refined += 1
+                    refined_variant = await self._refine_variant(
+                        variant,
+                        validation,
+                        latex_expert,
+                        max_compile_attempts,
+                        output_dir,
+                        iteration,
+                    )
+
+                    # Re-validate refined variant
+                    revalidation = await self._validate_variant(refined_variant)
+                    (
+                        still_has_critical,
+                        remaining_issues,
+                    ) = self._identify_critical_regressions(
+                        revalidation.visual_issues, original_issues
+                    )
+
+                    validation.was_refined = True
+                    validation.refinement_successful = not still_has_critical
+
+                    if still_has_critical:
+                        logger.warning(
+                            f"  ⚠️  Variant {variant.variant_id} still has {len(remaining_issues)} issue(s) after refinement"
+                        )
+                    else:
+                        logger.info(
+                            f"  ✅ Variant {variant.variant_id} successfully refined"
+                        )
+
+                    refined_variant.validation = validation
+                    refined_variants.append(refined_variant)
+                else:
+                    # Refinement disabled - just attach validation
+                    variant.validation = validation
+                    refined_variants.append(variant)
+            else:
+                logger.info(f"  ✅ Variant {variant.variant_id} passed validation")
+                variant.validation = validation
+                refined_variants.append(variant)
+
+        # Log summary
+        logger.info("")
+        logger.info(f"  Validation Summary:")
+        logger.info(f"    Variants validated: {len(variants)}")
+        logger.info(f"    Variants with critical issues: {variants_with_issues}")
+        logger.info(f"    Variants refined: {variants_refined}")
+
+        return refined_variants
 
     def _create_failure_result(
         self, message: str, diagnostics: StyleDiagnostics, iterations: int

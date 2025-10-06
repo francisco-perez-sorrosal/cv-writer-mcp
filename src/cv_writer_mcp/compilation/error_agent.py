@@ -10,7 +10,7 @@ from typing import Any
 from agents import Agent, Runner
 from loguru import logger
 
-from ..models import CompletionStatus, ServerConfig, get_output_type_class
+from ..models import CompletionStatus, ServerConfig, create_agent_from_config
 from ..utils import create_timestamped_version, load_agent_config, read_text_file
 from .models import (
     CompilationDiagnostics,
@@ -174,17 +174,10 @@ class CompilationErrorAgent:
             moderncv_guide=moderncv_guide
         )
 
-        # Get output type class from centralized mapping
-        output_type_class = get_output_type_class(
-            self.agent_config["agent_metadata"]["output_type"]
-        )
-
-        return Agent(
-            name=self.agent_config["agent_metadata"]["name"],
+        # Create agent using centralized helper with safe defaults
+        return create_agent_from_config(
+            agent_config=self.agent_config,
             instructions=error_fixing_instructions,
-            tools=[],  # No tools needed - content passed in prompt
-            model=self.agent_config["agent_metadata"]["model"],
-            output_type=output_type_class,
         )
 
     def parse_error_agent_output(

@@ -5,7 +5,7 @@ import os
 from agents import Agent, Runner
 from loguru import logger
 
-from ..models import CompletionStatus
+from ..models import CompletionStatus, create_agent_from_config
 from ..utils import load_agent_config
 from .models import FormattingOutput
 
@@ -74,18 +74,12 @@ class FormattingAgent:
         Returns:
             Configured Agent instance
         """
-        from ..models import get_output_type_class
-
-        output_type_class = get_output_type_class(
-            self.agent_config["agent_metadata"]["output_type"]
-        )
-
-        return Agent(
-            name=f"{self.agent_config['agent_metadata']['name']}_v{variant_id}",
+        # Create agent using centralized helper with safe defaults
+        return create_agent_from_config(
+            agent_config=self.agent_config,
             instructions=self.agent_config["instructions"],
-            tools=[],
             model=self.model,
-            output_type=output_type_class,
+            name_suffix=f"_v{variant_id}",
         )
 
     def _build_prompt(

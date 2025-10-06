@@ -109,3 +109,57 @@ def get_output_type_class(output_type_name: str):
         )
 
     return output_type_mapping[output_type_name]
+
+
+def create_agent_from_config(
+    agent_config: dict,
+    instructions: str,
+    model: str | None = None,
+    tools: list | None = None,
+    name_suffix: str = "",
+    strict_json_schema: bool = False,
+):
+    """Create an OpenAI Agent with standardized configuration and safe defaults.
+
+    This helper function centralizes agent creation logic, automatically wrapping
+    output types with AgentOutputSchema to handle complex Pydantic models
+    (dict[int, ...], Union types, list[ComplexModel], etc.) gracefully.
+
+    Args:
+        agent_config: Agent configuration dict from YAML (loaded via load_agent_config)
+        instructions: Formatted instructions string for the agent
+        model: Model override (uses agent_config model if None)
+        tools: List of tools for the agent (default: empty list)
+        name_suffix: Optional suffix for agent name (e.g., "_v2" for variants)
+        strict_json_schema: Whether to use strict JSON schema mode (default: False for safety)
+
+    Returns:
+        Configured Agent instance with properly wrapped output type
+
+    Example:
+        >>> agent_config = load_agent_config("error_agent.yaml")
+        >>> instructions = agent_config["instructions"].format(...)
+        >>> agent = create_agent_from_config(agent_config, instructions)
+    """
+    from agents import Agent, AgentOutputSchema
+
+    # Get output type class and wrap with AgentOutputSchema
+    output_type_class = get_output_type_class(
+        agent_config["agent_metadata"]["output_type"]
+    )
+    wrapped_output_type = AgentOutputSchema(
+        output_type_class, strict_json_schema=strict_json_schema
+    )
+
+    # Build agent name with optional suffix (for variants)
+    agent_name = agent_config["agent_metadata"]["name"]
+    if name_suffix:
+        agent_name = f"{agent_name}{name_suffix}"
+
+    return Agent(
+        name=agent_name,
+        instructions=instructions,
+        tools=tools or [],
+        model=model or agent_config["agent_metadata"]["model"],
+        output_type=wrapped_output_type,
+    )

@@ -94,7 +94,7 @@ instructions: |
 
   <output_requirements>
   Provide structured output with:
-  - status: "success" if analysis completed, "failure" if errors occurred
+  - status: "success" if analysis completed, "failed" if errors occurred
   - pages_analyzed: Number of screenshots analyzed
   - visual_issues: List of visual problems found (design perspective)
   - suggested_fixes: Optional hints for addressing visual issues (brief, general approach)

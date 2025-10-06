@@ -11,7 +11,7 @@ from typing import Any
 from agents import Agent, Runner
 from loguru import logger
 
-from ..models import CompletionStatus, get_output_type_class
+from ..models import CompletionStatus, create_agent_from_config
 from ..utils import load_agent_config
 from .models import (
     CompilationDiagnostics,
@@ -78,17 +78,11 @@ class CompilationAgent:
         Returns:
             An Agent configured with function tool for LaTeX compilation
         """
-        # Get output type class from centralized mapping
-        output_type_class = get_output_type_class(
-            self.agent_config["agent_metadata"]["output_type"]
-        )
-
-        return Agent(
-            name=self.agent_config["agent_metadata"]["name"],
+        # Create agent using centralized helper with safe defaults
+        return create_agent_from_config(
+            agent_config=self.agent_config,
             instructions=self.agent_config["instructions"],
             tools=[latex2pdf_tool],
-            model=self.agent_config["agent_metadata"]["model"],
-            output_type=output_type_class,
         )
 
     def parse_compiler_agent_output(

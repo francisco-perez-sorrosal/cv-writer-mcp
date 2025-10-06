@@ -108,7 +108,7 @@ class CompilerAgentOutput(BaseModel):
 
     status: CompletionStatus = Field(
         ...,
-        description='Compilation status: "success" (exit code 0) or "failure" (exit code > 0)',
+        description='Compilation status: "success" (exit code 0) or "failed" (exit code > 0)',
     )
     compilation_time: float = Field(..., description="Total duration in seconds")
     compilation_summary: str = Field(

@@ -7,7 +7,7 @@ from typing import cast
 from agents import Agent, Runner
 from loguru import logger
 
-from ..models import get_output_type_class
+from ..models import create_agent_from_config
 from ..utils import load_agent_config
 from .models import SingleVariantEvaluationOutput, VariantEvaluationOutput
 
@@ -40,14 +40,16 @@ class StyleQualityAgent:
         Returns:
             Configured Agent instance
         """
-        output_type_class = get_output_type_class(output_type)
+        # Create a modified config with the desired output type
+        config_with_output = self.agent_config.copy()
+        config_with_output["agent_metadata"] = self.agent_config["agent_metadata"].copy()
+        config_with_output["agent_metadata"]["output_type"] = output_type
 
-        return Agent(
-            name=self.agent_config["agent_metadata"]["name"],
+        # Create agent using centralized helper with safe defaults
+        return create_agent_from_config(
+            agent_config=config_with_output,
             instructions=self.agent_config["instructions"],
-            tools=[],  # No tools needed, pure evaluation
             model=self.model,
-            output_type=output_type_class,
         )
 
     async def evaluate_single_variant(

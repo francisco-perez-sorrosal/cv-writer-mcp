@@ -188,7 +188,7 @@ instructions: |
 
   <output_requirements>
   Provide structured output with:
-  - status: "success" if improvements applied successfully, "failure" if errors encountered
+  - status: "success" if improvements applied successfully, "failed" if errors encountered
   - design_strategy: Brief description of the design approach you took (2-3 sentences explaining your strategy)
   - design_system_analysis: Key design patterns you identified (e.g., "Document uses subsections for hierarchy, \large for job title emphasis, 0.3em spacing pattern")
   - fixes_applied: List of specific improvements implemented with rationale (e.g., "Added \large to 2023-2024 job title to match established hierarchy pattern")

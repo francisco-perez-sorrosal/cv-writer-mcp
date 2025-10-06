@@ -48,6 +48,50 @@ instructions: |
      - Use moderncv commands: \\cventry, \\cvitem, \\cvlistitem, etc.
   </structure_guidelines>
 
+  <critical_content_fidelity_rules>
+  🚨 STRICT ANTI-HALLUCINATION POLICY 🚨
+
+  1. **ONLY Convert What Exists in Markdown**:
+     - NEVER invent, add, or create sections not present in the markdown input
+     - NEVER add placeholder content like "Selected professional courses on..." if markdown doesn't contain it
+     - NEVER create empty sections with placeholder text
+     - If a section doesn't exist in markdown → DON'T create it in LaTeX
+
+  2. **Section Mapping Strategy**:
+     - **Exact Match**: If markdown section name matches LaTeX template section → use that section
+     - **Semantic Match**: If markdown section is semantically similar but different name:
+       * Example: Markdown "Work Experience" → LaTeX \\section{{Professional Experience}}
+       * Example: Markdown "Projects" → LaTeX \\section{{Projects}} (create new section, don't force into template sections)
+     - **No Match**: If markdown has unique content not fitting any template section:
+       * Create a NEW section with appropriate name from markdown
+       * Don't force content into unrelated template sections
+       * Don't drop content just because it doesn't match template
+
+  3. **Content Integrity**:
+     - Convert ALL markdown content (nothing should be dropped)
+     - Convert ONLY markdown content (nothing should be added)
+     - Preserve exact text, dates, numbers, accomplishments from markdown
+     - Never embellish or expand on what's written
+
+  4. **Examples of FORBIDDEN Actions**:
+     ❌ BAD: Markdown has no "Courses" section → LaTeX adds \\section{{Courses}} with placeholder
+     ❌ BAD: Markdown "Experience" has 5 jobs → LaTeX only includes 3
+     ❌ BAD: Markdown "Skills: Python, Java" → LaTeX adds "Rust, C++" not in markdown
+     ❌ BAD: Markdown has "Open Source" section → Forced into "Related Activities" template section
+
+     ✅ GOOD: Markdown has "Experience" with 5 jobs → LaTeX \\section{{Professional Experience}} with ALL 5 jobs
+     ✅ GOOD: Markdown has no "Courses" → LaTeX has no Courses section
+     ✅ GOOD: Markdown has "Open Source Projects" → LaTeX creates \\section{{Open Source Projects}}
+     ✅ GOOD: Markdown lists "Python, Java" only → LaTeX lists exactly "Python, Java"
+
+  5. **Validation Before Output**:
+     Before returning LaTeX, verify:
+     - Every markdown section is represented in LaTeX
+     - No LaTeX sections exist without corresponding markdown content
+     - All markdown content points (jobs, skills, etc.) are in LaTeX
+     - No invented/placeholder content exists in LaTeX
+  </critical_content_fidelity_rules>
+
   <formatting_guidelines>
   - Escape special characters in text only (preserve LaTeX commands): \\ $ & # % ^ _ ~
   - Use \\textbf{{}}/\\textit{{}} to highlight metrics and accomplishments
@@ -71,10 +115,22 @@ instructions: |
 
   <validation_checklist>
   Before returning, verify:
+
+  **Template Fidelity:**
   - Entire preamble from <template_preamble_source> copied exactly (all \\usepackage, \\renewcommand, \\makeatletter sections)
   - Personal data from <personal_information> used exclusively (including quote)
-  - All markdown content converted to LaTeX document body
+
+  **Content Fidelity (CRITICAL):**
+  - ALL markdown sections are represented in LaTeX (nothing dropped)
+  - ONLY markdown content exists in LaTeX (nothing invented)
+  - Every job/role/item from markdown appears in LaTeX
+  - No placeholder sections added (e.g., "Courses" if not in markdown)
+  - No embellished or expanded content beyond markdown source
+  - Section names match markdown (or are semantic equivalents)
+
+  **Compilation Readiness:**
   - Ready to compile with pdflatex (all braces matched, proper syntax)
+  - All LaTeX commands syntactically correct
   </validation_checklist>
 
 prompt_template: |

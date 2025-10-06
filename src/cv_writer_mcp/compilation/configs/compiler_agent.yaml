@@ -9,7 +9,7 @@ instructions: |
 
   <output_requirements>
   Provide:
-  - status: "success" (exit code 0) or "failure" (exit code > 0)
+  - status: "success" (exit code 0) or "failed" (exit code > 0)
   - compilation_time: Total duration in seconds
   - compilation_summary: What happened during compilation (general outcome, warnings if present)
   - errors_found: List of error messages from .log if failed, null if successful

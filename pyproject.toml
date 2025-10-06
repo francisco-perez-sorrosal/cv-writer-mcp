@@ -89,7 +89,7 @@ generate-cv-fast = "python -m cv_writer_mcp generate-cv-from-markdown input/schw
 generate-cv-quality = "python -m cv_writer_mcp generate-cv-from-markdown input/schwab_cv_tailoring.md --output schwab_cv_quality.pdf --variants 2 --debug"
 
 # Iterative Mode: 3 iterations, 2 variants per iteration - Best Quality (~15-25 LLM calls)
-generate-cv-iterative = "python -m cv_writer_mcp generate-cv-from-markdown input/schwab_cv_tailoring.md --output schwab_cv_iterative.pdf --max-style-iter 3 --variants 2 --debug"
+generate-cv-iterative = "python -m cv_writer_mcp generate-cv-from-markdown input/schwab_cv_tailoring.md --output schwab_cv_iterative.pdf --max-style-iter 2 --variants 3 --debug"
 
 # Compile + Improve: Take existing LaTeX, compile and improve style
 compile-and-improve = "python -m cv_writer_mcp compile-and-improve-style output/my_cv_schwab.tex --output schwab_improved.pdf --variants 2 --debug"

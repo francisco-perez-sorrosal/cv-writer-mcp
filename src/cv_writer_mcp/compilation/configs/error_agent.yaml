@@ -24,8 +24,8 @@ instructions: |
   </fixing_principles>
 
   <output_format>
-  - status: "success"/"failure"
-  - fixes_applied: [{line_number, error_type, fix_applied, confidence}]
+  - status: "success"/"failed"
+  - fixes_applied: [{error_type, error_description, fix_applied, line_number, confidence}]
   - total_fixes, file_modified, message
   - remaining_issues: [unfixable errors]
   - corrected_content: complete fixed LaTeX (or empty)
@@ -60,7 +60,7 @@ prompt_template: |
   2. For undefined commands: fix typos OR remove if not in ModernCV guide
   3. ONLY use commands documented in ModernCV guide or standard LaTeX
   4. Apply minimal fix; verify no new errors (brace balance, environment matching)
-  5. Document each fix: line, error type, change made
+  5. Document each fix: error_type, error_description, fix_applied, line_number, confidence
   6. List unfixable errors with explanation
   </fix_requirements>
 

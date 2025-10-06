@@ -6,7 +6,7 @@ from pathlib import Path
 from agents import Agent, Runner
 from loguru import logger
 
-from ..models import CompletionStatus, get_output_type_class
+from ..models import CompletionStatus, create_agent_from_config
 from ..utils import load_agent_config, read_text_file
 from .models import LaTeXOutput, MarkdownToLaTeXRequest, MarkdownToLaTeXResponse
 
@@ -77,16 +77,11 @@ class MD2LaTeXAgent:
             personal_info=self.personal_info_content,
         )
 
-        # Get output type class from centralized mapping
-        output_type_class = get_output_type_class(
-            self.agent_config["agent_metadata"]["output_type"]
-        )
-
-        self.agent = Agent(
-            name=self.agent_config["agent_metadata"]["name"],
+        # Create agent using centralized helper with safe defaults
+        self.agent = create_agent_from_config(
+            agent_config=self.agent_config,
             instructions=agent_instructions,
             model=self.model,
-            output_type=output_type_class,
         )
         logger.info("Created OpenAI agent with structured output")
 
