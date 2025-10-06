@@ -77,8 +77,10 @@ class CVPipelineOrchestrator:
             # ================================================================
             # PHASE 1: Markdown → LaTeX Conversion
             # ================================================================
-            logger.info("\n📝 PHASE 1: Converting markdown to LaTeX")
-            logger.info("-" * 50)
+            logger.info("")
+            logger.info("█" * 70)
+            logger.info("📝 PHASE 1: MARKDOWN → LATEX CONVERSION")
+            logger.info("█" * 70)
             conversion_start = time.time()
 
             md_request = MarkdownToLaTeXRequest(
@@ -112,10 +114,10 @@ class CVPipelineOrchestrator:
             # ================================================================
             # PHASE 2: Initial Compilation (with compile-fix-compile loop)
             # ================================================================
-            logger.info(
-                f"\n🔨 PHASE 2: Initial compilation (up to {max_compile_attempts} attempts)"
-            )
-            logger.info("-" * 50)
+            logger.info("")
+            logger.info("█" * 70)
+            logger.info(f"🔨 PHASE 2: INITIAL COMPILATION (up to {max_compile_attempts} attempts)")
+            logger.info("█" * 70)
 
             initial_pdf_filename = tex_filename.stem + ".pdf"
             initial_pdf_path = self.config.output_dir / initial_pdf_filename
@@ -136,26 +138,36 @@ class CVPipelineOrchestrator:
                     total_time=time.time() - start_time,
                 )
 
+            # Get actual compiled PDF path (may differ from requested if fixing was applied)
+            actual_compiled_pdf = compile_result.output_path or initial_pdf_path
+            actual_compiled_tex = (
+                actual_compiled_pdf.parent / f"{actual_compiled_pdf.stem}.tex"
+            )
+
             logger.info(
                 f"✅ Compilation completed in {compile_result.compilation_time:.2f}s"
             )
+            logger.info(f"   📄 PDF: {actual_compiled_pdf.name}")
+            logger.info(f"   📝 TEX: {actual_compiled_tex.name}")
 
             # ================================================================
             # PHASE 3: Style Improvement (optional, with N variants)
             # ================================================================
             style_diagnostics = None
-            final_pdf_path = initial_pdf_path
-            final_tex_path = tex_path
+            final_pdf_path = actual_compiled_pdf
+            final_tex_path = actual_compiled_tex
 
             if enable_style_improvement:
+                logger.info("")
+                logger.info("█" * 70)
                 logger.info(
-                    f"\n🎨 PHASE 3: Style improvement ({num_style_variants} variant(s), {max_style_iterations} iteration(s))"
+                    f"🎨 PHASE 3: STYLE IMPROVEMENT ({num_style_variants} variant(s), {max_style_iterations} iteration(s))"
                 )
-                logger.info("-" * 50)
+                logger.info("█" * 70)
 
                 style_result = await self.style_coordinator.improve_with_variants(
-                    initial_pdf_path=initial_pdf_path,
-                    initial_tex_path=tex_path,
+                    initial_pdf_path=actual_compiled_pdf,
+                    initial_tex_path=actual_compiled_tex,
                     latex_expert=self.latex_expert,
                     max_iterations=max_style_iterations,
                     num_variants=num_style_variants,
@@ -189,13 +201,14 @@ class CVPipelineOrchestrator:
             # ================================================================
             total_time = time.time() - start_time
 
-            logger.info("\n" + "=" * 70)
+            logger.info("")
+            logger.info("█" * 70)
             logger.info("🎉 CV GENERATION PIPELINE COMPLETED!")
-            logger.info("=" * 70)
+            logger.info("█" * 70)
             logger.info(f"📊 Total time: {total_time:.2f}s")
-            logger.info(f"📄 Final PDF: {final_pdf_path}")
-            logger.info(f"📝 Final LaTeX: {final_tex_path}")
-            logger.info("=" * 70 + "\n")
+            logger.info(f"📄 Final PDF: {final_pdf_path.name}")
+            logger.info(f"📝 Final LaTeX: {final_tex_path.name}")
+            logger.info("█" * 70)
 
             return CVGenerationResult(
                 status=CompletionStatus.SUCCESS,
@@ -281,7 +294,15 @@ class CVPipelineOrchestrator:
                     total_time=time.time() - start_time,
                 )
 
+            # Get actual compiled PDF path (may differ from requested if fixing was applied)
+            actual_compiled_pdf = compile_result.output_path or initial_pdf_path
+            actual_compiled_tex = (
+                actual_compiled_pdf.parent / f"{actual_compiled_pdf.stem}.tex"
+            )
+
             logger.info("✅ Compilation completed")
+            logger.info(f"   📄 PDF: {actual_compiled_pdf.name}")
+            logger.info(f"   📝 TEX: {actual_compiled_tex.name}")
 
             # ================================================================
             # PHASE 2: Style Improvement
@@ -290,8 +311,8 @@ class CVPipelineOrchestrator:
             logger.info("-" * 50)
 
             style_result = await self.style_coordinator.improve_with_variants(
-                initial_pdf_path=initial_pdf_path,
-                initial_tex_path=tex_path,
+                initial_pdf_path=actual_compiled_pdf,
+                initial_tex_path=actual_compiled_tex,
                 latex_expert=self.latex_expert,
                 max_iterations=max_style_iterations,
                 num_variants=num_style_variants,
@@ -304,8 +325,8 @@ class CVPipelineOrchestrator:
                 logger.warning(f"⚠️  Style improvement failed: {style_result.message}")
                 logger.warning("   Using initial compilation result")
 
-                final_pdf_path = initial_pdf_path
-                final_tex_path = tex_path
+                final_pdf_path = actual_compiled_pdf
+                final_tex_path = actual_compiled_tex
                 style_diagnostics = style_result.diagnostics
             else:
                 if (
@@ -319,8 +340,8 @@ class CVPipelineOrchestrator:
                 else:
                     logger.warning("⚠️  Style improvement returned no variant paths")
                     logger.warning("   Using initial compilation result")
-                    final_pdf_path = initial_pdf_path
-                    final_tex_path = tex_path
+                    final_pdf_path = actual_compiled_pdf
+                    final_tex_path = actual_compiled_tex
                     style_diagnostics = style_result.diagnostics
 
             # ================================================================

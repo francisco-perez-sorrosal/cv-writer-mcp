@@ -183,8 +183,12 @@ class LaTeXExpert:
         Returns:
             OrchestrationResult with compilation outcome
         """
+        logger.info("")
+        logger.info("─" * 70)
         logger.info(f"🔄 COMPILATION ATTEMPT {attempt}/{max_attempts}")
-        logger.info(f"📄 COMPILING FILE: {tex_file_path}")
+        logger.info("─" * 70)
+        logger.info(f"📄 Input TEX: {tex_file_path.name}")
+        logger.info(f"📁 Output dir: {output_path.parent}")
 
         try:
             compilation_result = await self._compilation_agent.compile_latex(
@@ -192,12 +196,18 @@ class LaTeXExpert:
             )
 
             if compilation_result.status == CompletionStatus.SUCCESS:
+                # Derive actual PDF path from the TEX file that was compiled
+                # (since pdflatex creates PDF with same stem as TEX file)
+                actual_pdf_path = output_path.parent / f"{tex_file_path.stem}.pdf"
+
                 logger.info(f"✅ Compilation successful (Attempt {attempt})")
+                logger.info(f"   📄 PDF created: {actual_pdf_path.name}")
+
                 return OrchestrationResult(
                     status=CompletionStatus.SUCCESS,
                     compilation_time=compilation_result.compilation_time,
                     log_output=compilation_result.log_output,
-                    output_path=output_path,
+                    output_path=actual_pdf_path,
                     errors_found=None,
                     exit_code=0,
                 )
@@ -229,7 +239,10 @@ class LaTeXExpert:
         Returns:
             Tuple of (fixing output, corrected file path or None)
         """
+        logger.info("")
+        logger.info("─" * 70)
         logger.info(f"🔧 FIXING ERRORS (After Attempt {attempt})")
+        logger.info("─" * 70)
 
         try:
             fixing_output, corrected_file_path = await self._fixing_agent.fix_errors(
@@ -309,9 +322,11 @@ class LaTeXExpert:
         Returns:
             Final compilation result
         """
-        logger.info(
-            f"🚀 Starting LaTeX compilation orchestration ({max_attempts} max attempts)"
-        )
+        logger.info("=" * 70)
+        logger.info(f"🚀 STARTING LATEX COMPILATION ORCHESTRATION")
+        logger.info(f"   Max attempts: {max_attempts}")
+        logger.info(f"   Initial file: {tex_file_path.name}")
+        logger.info("=" * 70)
 
         current_file = tex_file_path
 
@@ -328,8 +343,11 @@ class LaTeXExpert:
 
             # Gate: Success? Done.
             if compile_result.status == CompletionStatus.SUCCESS:
-                logger.info("✅ Compilation orchestration succeeded")
+                logger.info("")
+                logger.info("=" * 70)
+                logger.info("✅ COMPILATION ORCHESTRATION SUCCEEDED")
                 logger.info(str(self._compilation_diagnostics))
+                logger.info("=" * 70)
                 return compile_result
 
             # Step 2: Try to fix errors (if retries remain)

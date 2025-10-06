@@ -1,0 +1,13 @@
+name: Francisco
+family_name: Perez-Sorrosal
+job_title: Principal Research Engineer
+address: Ask
+city: San Francisco
+state: CA
+country: U.S.
+phone: Ask
+email: Ask
+linkedin: fperezsorrosal
+github: francisco-perez-sorrosal
+full_cv_url: https://github.com/francisco-perez-sorrosal/cv/blob/master/2025_FranciscoPerezSorrosal_CV_English.pdf
+quote: "Any man could, if he were so inclined, be the sculptor of his own brain." -- Santiago Ramón y Cajal

@@ -12,6 +12,7 @@ from playwright.async_api import (
     PlaywrightContextManager,
     async_playwright,
 )
+from pypdf import PdfReader
 
 
 class PDFPlaywrightComputer:
@@ -61,6 +62,26 @@ class PDFPlaywrightComputer:
             await self.cleanup()
             raise
 
+    def _get_pdf_page_count(self, pdf_path: str) -> int:
+        """
+        Get accurate page count from PDF file using pypdf.
+
+        Args:
+            pdf_path: Path to the PDF file
+
+        Returns:
+            Number of pages in the PDF
+        """
+        try:
+            reader = PdfReader(pdf_path)
+            page_count = len(reader.pages)
+            logger.info(f"PDF has {page_count} pages (detected via pypdf)")
+            return page_count
+        except Exception as e:
+            logger.error(f"Failed to read PDF page count with pypdf: {e}")
+            # Fallback to default if pypdf fails
+            return 1
+
     async def open_pdf(self, pdf_path: str) -> int:
         """
         Open PDF file in browser and return page count.
@@ -79,6 +100,9 @@ class PDFPlaywrightComputer:
             if not pdf_file.exists():
                 raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
+            # Get accurate page count using pypdf
+            page_count = self._get_pdf_page_count(pdf_path)
+
             # Use Chrome's built-in PDF viewer directly
             file_url = pdf_file.resolve().as_uri()
             logger.info(f"Opening PDF directly in Chrome's PDF viewer: {file_url}")
@@ -90,250 +114,14 @@ class PDFPlaywrightComputer:
             # Wait for PDF to load
             await asyncio.sleep(5)
 
-            # Try to detect page count from Chrome's PDF viewer
-            page_count = await self._detect_chrome_pdf_page_count()
-
             logger.info(
-                f"PDF opened successfully in Chrome PDF viewer, detected {page_count} pages"
+                f"PDF opened successfully in Chrome PDF viewer with {page_count} pages"
             )
             return page_count
 
         except Exception as e:
             logger.error(f"Failed to open PDF: {e}")
             raise
-
-    async def _detect_chrome_pdf_page_count(self) -> int:
-        """Detect the number of pages in Chrome's built-in PDF viewer."""
-        try:
-            # Wait for Chrome's PDF viewer to fully load
-            await asyncio.sleep(3)
-
-            # Try to get page count from Chrome's PDF viewer
-            page_count = None
-
-            # Method 1: Try JavaScript evaluation to access Chrome's PDF viewer
-            try:
-                for attempt in range(5):
-                    page_count = await self.page.evaluate(
-                        """
-                        () => {
-                            // Try to access Chrome's PDF viewer plugin
-                            const plugin = document.querySelector('embed[type="application/pdf"]');
-                            if (plugin && plugin.src) {
-                                // Try different methods to get page count
-                                try {
-                                    // Some PDF viewers expose page count
-                                    if (window.pdfDocument && window.pdfDocument.numPages) {
-                                        return window.pdfDocument.numPages;
-                                    }
-                                    // Alternative approach
-                                    if (plugin.pageCount) {
-                                        return plugin.pageCount;
-                                    }
-                                } catch (e) {
-                                    // Ignore errors and try fallback
-                                }
-                            }
-                            return null;
-                        }
-                    """
-                    )
-                    if page_count:
-                        logger.debug(
-                            f"Got page count from Chrome PDF viewer (attempt {attempt + 1}): {page_count}"
-                        )
-                        break
-                    await asyncio.sleep(1)  # Wait before retry
-            except Exception as e:
-                logger.debug(f"JavaScript method failed: {e}")
-
-            # Method 2: Use navigation approach to count pages
-            if not page_count:
-                try:
-                    page_count = await self._count_pages_by_navigation()
-                except Exception as e:
-                    logger.debug(f"Navigation counting failed: {e}")
-
-            # Final fallback
-            if not page_count or page_count <= 0:
-                logger.warning(
-                    "Could not detect page count from Chrome PDF viewer, defaulting to 4"
-                )
-                page_count = 4
-
-            return page_count
-
-        except Exception as e:
-            logger.error(f"Failed to detect page count from Chrome PDF viewer: {e}")
-            return 4  # Default fallback
-
-    async def _detect_pdfjs_page_count(self) -> int:
-        """Detect the number of pages in PDF.js viewer."""
-        try:
-            # Wait for PDF.js to fully load and PDF document to be processed
-            await asyncio.sleep(5)
-
-            # Try to get page count from PDF.js interface
-            page_count = None
-
-            # Method 1: Try JavaScript evaluation of PDF.js API (most reliable)
-            try:
-                # Wait for PDF.js application to be ready and try multiple times
-                for attempt in range(10):
-                    page_count = await self.page.evaluate(
-                        """
-                        () => {
-                            // Try to access PDF.js viewer app
-                            if (window.PDFViewerApplication &&
-                                window.PDFViewerApplication.pdfDocument &&
-                                window.PDFViewerApplication.pdfDocument.numPages) {
-                                return window.PDFViewerApplication.pdfDocument.numPages;
-                            }
-                            // Alternative way
-                            if (window.pdfApp && window.pdfApp.pdfDocument) {
-                                return window.pdfApp.pdfDocument.numPages;
-                            }
-                            return null;
-                        }
-                    """
-                    )
-                    if page_count:
-                        logger.debug(
-                            f"Got page count from JavaScript (attempt {attempt + 1}): {page_count}"
-                        )
-                        break
-                    await asyncio.sleep(2)  # Wait before retry
-            except Exception as e:
-                logger.debug(f"JavaScript method failed: {e}")
-
-            # Method 2: Try to get total pages from PDF.js viewer UI elements
-            if not page_count:
-                try:
-                    # Look for various possible selectors for page count
-                    selectors = [
-                        "#numPages",
-                        ".numPages",
-                        '[data-l10n-id="page_of_pages"]',
-                    ]
-                    for selector in selectors:
-                        try:
-                            page_count_element = await self.page.wait_for_selector(
-                                selector, timeout=3000
-                            )
-                            if page_count_element:
-                                page_count_text = (
-                                    await page_count_element.text_content()
-                                )
-                                # Extract number from text like "of 5" or just "5"
-                                import re
-
-                                match = re.search(r"(\d+)", page_count_text)
-                                if match:
-                                    page_count = int(match.group(1))
-                                    logger.debug(
-                                        f"Got page count from {selector}: {page_count}"
-                                    )
-                                    break
-                        except Exception:
-                            continue
-                except Exception as e:
-                    logger.debug(f"UI element method failed: {e}")
-
-            # Method 3: Try to find page count in any text on the page
-            if not page_count:
-                try:
-                    # Get all visible text and look for patterns like "1 / 5" or "Page 1 of 5"
-                    page_text = await self.page.text_content("body")
-                    if page_text:
-                        import re
-
-                        # Look for patterns like "1 / 5" or "1 of 5"
-                        matches = re.findall(r"(?:of|/)[\s]*(\d+)", page_text)
-                        if matches:
-                            # Take the largest number found (likely the total pages)
-                            page_count = max([int(m) for m in matches])
-                            logger.debug(f"Got page count from page text: {page_count}")
-                except Exception as e:
-                    logger.debug(f"Page text method failed: {e}")
-
-            # Final fallback
-            if not page_count or page_count <= 0:
-                logger.warning(
-                    "Could not detect page count from PDF.js, defaulting to 4"
-                )
-                page_count = 4
-
-            return page_count
-
-        except Exception as e:
-            logger.error(f"Failed to detect page count from PDF.js: {e}")
-            return 4  # Default fallback
-
-    async def _detect_page_count(self) -> int:
-        """Detect the number of pages in the opened PDF."""
-        try:
-            # Wait for PDF viewer to load
-            await asyncio.sleep(3)
-
-            # Try different methods to get page count
-            page_count = None
-
-            # Method 1: Try to find page count in Chrome's PDF viewer
-            try:
-                # Look for page indicators like "1 of 5" or page count elements
-                page_info_selectors = [
-                    "[data-page-number]",
-                    ".page-indicator",
-                    'input[title*="page"]',
-                    "#pageNumber",
-                ]
-
-                for selector in page_info_selectors:
-                    elements = await self.page.query_selector_all(selector)
-                    if elements:
-                        page_count = len(elements)
-                        break
-
-            except Exception as e:
-                logger.debug(f"Method 1 failed: {e}")
-
-            # Method 2: Try JavaScript evaluation
-            if not page_count:
-                try:
-                    # Try to access PDF viewer JavaScript API
-                    page_count = await self.page.evaluate(
-                        """
-                        () => {
-                            // Try Chrome's PDF viewer
-                            if (window.PDFViewerApplication) {
-                                return window.PDFViewerApplication.pagesCount;
-                            }
-                            // Try to count page elements
-                            const pages = document.querySelectorAll('[data-page-number], .page');
-                            return pages.length;
-                        }
-                    """
-                    )
-                except Exception as e:
-                    logger.debug(f"Method 2 failed: {e}")
-
-            # Method 3: Fallback - navigate to end and count
-            if not page_count or page_count <= 0:
-                try:
-                    page_count = await self._count_pages_by_navigation()
-                except Exception as e:
-                    logger.debug(f"Method 3 failed: {e}")
-
-            # Final fallback
-            if not page_count or page_count <= 0:
-                logger.warning("Could not detect page count, defaulting to 4")
-                page_count = 4
-
-            return page_count
-
-        except Exception as e:
-            logger.error(f"Failed to detect page count: {e}")
-            return 4  # Default fallback
 
     async def _ensure_pdf_viewer_focus(self) -> None:
         """Ensure the PDF viewer has focus for keyboard navigation."""
@@ -352,60 +140,6 @@ class PDFPlaywrightComputer:
         except Exception as e:
             logger.warning(f"Could not ensure PDF focus: {e}")
             # Continue anyway - sometimes keyboard navigation works without explicit focus
-
-    async def _count_pages_by_navigation(self) -> int:
-        """Count pages by navigating through the PDF using keyboard with screenshot comparison."""
-        try:
-            # Ensure PDF viewer has focus
-            await self._ensure_pdf_viewer_focus()
-
-            # Go to beginning first
-            await self.page.keyboard.press("Home")
-            await asyncio.sleep(2)
-
-            page_count = 1
-            max_attempts = 15  # Reasonable limit for CV pages
-
-            logger.debug(
-                "Using PageDown for PDF page detection via screenshot comparison"
-            )
-
-            # Keep pressing PageDown and compare screenshots to detect page changes
-            for _i in range(max_attempts):
-                # Take screenshot before navigation
-                screenshot_before = await self.page.screenshot()
-
-                # Navigate to next page
-                await self.page.keyboard.press("PageDown")
-                await asyncio.sleep(1.5)  # Give PDF viewer time to respond
-
-                # Take screenshot after navigation
-                screenshot_after = await self.page.screenshot()
-
-                # Compare screenshots - if different, we likely moved to a new page
-                if screenshot_before != screenshot_after:
-                    page_count += 1
-                    logger.debug(
-                        f"Page {page_count} detected via screenshot comparison"
-                    )
-                else:
-                    logger.debug(
-                        f"No page change detected, stopping at page {page_count}"
-                    )
-                    break
-
-            # Go back to beginning
-            await self.page.keyboard.press("Home")
-            await asyncio.sleep(1)
-
-            logger.info(f"Final detected page count: {page_count}")
-            return max(
-                page_count, 4
-            )  # Ensure at least 4 pages as that's what pdfinfo shows
-
-        except Exception as e:
-            logger.error(f"Failed to count pages by navigation: {e}")
-            return 4
 
     async def navigate_to_page(self, page_number: int) -> None:
         """Navigate to a specific page number."""
@@ -501,8 +235,8 @@ class PDFPlaywrightComputer:
             if not self.page:
                 raise RuntimeError("Browser not initialized")
 
-            # Take full page screenshot (quality not supported for PNG)
-            screenshot_bytes = await self.page.screenshot(type="png", full_page=True)
+            # Take viewport screenshot only (one page at a time, not full scrollable content)
+            screenshot_bytes = await self.page.screenshot(type="png", full_page=False)
 
             return screenshot_bytes
 

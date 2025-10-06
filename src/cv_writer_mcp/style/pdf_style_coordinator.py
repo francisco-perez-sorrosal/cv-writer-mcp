@@ -111,19 +111,21 @@ class PDFStyleCoordinator:
         iteration_feedback: str | None = None  # None for first iteration, set by judge feedback
         best_result = None
 
-        logger.info("🎨 Starting multi-variant style improvement")
-        logger.info(
-            f"   Iterations: {max_iterations}, Variants per iteration: {num_variants}"
-        )
+        logger.info("")
+        logger.info("=" * 70)
+        logger.info("🎨 STARTING MULTI-VARIANT STYLE IMPROVEMENT")
+        logger.info(f"   Iterations: {max_iterations}, Variants per iteration: {num_variants}")
         logger.info(
             f"   Quality validation: {'enabled' if enable_quality_validation else 'disabled'}"
         )
+        logger.info("=" * 70)
 
         # OUTER LOOP: Style iterations
         for iteration in range(1, max_iterations + 1):
-            logger.info(f"\n{'='*60}")
-            logger.info(f"🎨 Style Iteration {iteration}/{max_iterations}")
-            logger.info(f"{'='*60}")
+            logger.info("")
+            logger.info("=" * 70)
+            logger.info(f"🎨 STYLE ITERATION {iteration}/{max_iterations}")
+            logger.info("=" * 70)
 
             # Step 1: Capture & Analyze current PDF
             capture_result = await self._capture_and_analyze_pdf(current_pdf)
@@ -131,12 +133,16 @@ class PDFStyleCoordinator:
                 logger.error(f"Page capture failed: {capture_result.message}")
                 break
 
-            logger.info(
-                f"📊 Analysis: {len(capture_result.visual_issues)} issues found"
-            )
+            logger.info("")
+            logger.info("─" * 70)
+            logger.info(f"📊 VISUAL ANALYSIS: {len(capture_result.visual_issues)} issues found")
+            logger.info("─" * 70)
 
             # Step 2: Generate N variants in parallel
-            logger.info(f"🔧 Generating {num_variants} variant(s) in parallel...")
+            logger.info("")
+            logger.info("─" * 70)
+            logger.info(f"🔧 GENERATING {num_variants} VARIANT(S) IN PARALLEL")
+            logger.info("─" * 70)
             variants = await self._generate_variants_parallel(
                 num_variants=num_variants,
                 current_tex_content=current_tex_content,
@@ -221,12 +227,14 @@ class PDFStyleCoordinator:
 
         # Return final result
         if best_result:
-            logger.info(f"\n{'='*60}")
-            logger.info("🎉 Style improvement completed!")
+            logger.info("")
+            logger.info("=" * 70)
+            logger.info("🎉 STYLE IMPROVEMENT COMPLETED")
             logger.info(f"   Iterations: {diagnostics.iterations_completed}")
             logger.info(f"   Best variant: {best_result.variant_id}")
-            logger.info(f"   Final PDF: {best_result.pdf_path}")
-            logger.info(f"{'='*60}\n")
+            logger.info(f"   Final PDF: {best_result.pdf_path.name}")
+            logger.info(f"   Final TEX: {best_result.tex_path.name}")
+            logger.info("=" * 70)
 
             return StyleIterationResult(
                 status=CompletionStatus.SUCCESS,
