@@ -190,6 +190,8 @@ Please incorporate this feedback to improve the formatting."""
             logger.error(f"  ❌ Variant {variant_id} formatting failed: {e}")
             return FormattingOutput(
                 status=CompletionStatus.FAILED,
+                design_strategy="Error occurred before design analysis could be performed",
+                design_system_analysis="Unable to analyze design system due to formatting failure",
                 fixes_applied=[],
                 improved_latex_content=latex_content,
                 implementation_notes=f"Formatting implementation failed: {str(e)}",

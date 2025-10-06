@@ -75,16 +75,24 @@ class FormattingOutput(BaseModel):
         ...,
         description="Whether the formatting improvements were successfully implemented",
     )
+    design_strategy: str = Field(
+        ...,
+        description="Brief description of the strategic design approach taken (2-3 sentences)",
+    )
+    design_system_analysis: str = Field(
+        ...,
+        description="Key design patterns identified in the document (e.g., typography hierarchy, spacing system, structural organization)",
+    )
     fixes_applied: list[str] = Field(
         ...,
-        description="List of specific formatting improvements that were implemented",
+        description="List of specific formatting improvements that were implemented with rationale",
     )
     improved_latex_content: str = Field(
         ...,
         description="The improved LaTeX file content with all formatting improvements applied",
     )
     implementation_notes: str = Field(
-        ..., description="Detailed explanation of changes made and implementation notes"
+        ..., description="Summary of how changes maintain design coherence and support variant philosophy"
     )
 
 
