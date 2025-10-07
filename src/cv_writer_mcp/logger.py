@@ -26,7 +26,7 @@ class LogConfig(BaseModel):
 
     level: LogLevel = LogLevel.INFO
     format: str = (
-        "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+        "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>"
     )
     rotation: str = "10 MB"
     retention: str = "7 days"
@@ -75,14 +75,25 @@ def configure_logger(config: LogConfig) -> "Logger":
 
 
 def get_logger(name: str | None = None) -> "Logger":
-    """Get a logger instance.
+    """Get a logger instance with simplified module path.
 
     Args:
-        name: Optional logger name
+        name: Optional logger name (if None, extracts from calling module)
 
     Returns:
-        Logger instance
+        Logger instance with simplified module path
     """
+    import inspect
+    
     if name:
-        return loguru_logger.bind(name=name)
-    return loguru_logger
+        # Extract just the last part of the module path
+        module_name = name.split('.')[-1]
+        # Create a custom logger that overrides the name field
+        return loguru_logger.patch(lambda record: record.update(name=module_name))
+    
+    # Auto-detect calling module
+    frame = inspect.currentframe().f_back
+    module_name = frame.f_globals.get('__name__', 'unknown')
+    # Extract just the last part of the module path
+    simple_module = module_name.split('.')[-1]
+    return loguru_logger.patch(lambda record: record.update(name=simple_module))

@@ -135,7 +135,6 @@ class PDFPlaywrightComputer:
             await self.page.mouse.click(center_x, center_y)
             await asyncio.sleep(0.5)
 
-            logger.debug("PDF viewer focus ensured by clicking on center of viewport")
 
         except Exception as e:
             logger.warning(f"Could not ensure PDF focus: {e}")
@@ -156,7 +155,6 @@ class PDFPlaywrightComputer:
                 # Use Chrome's built-in PDF viewer navigation
                 await self._navigate_chrome_pdf_page(page_number)
 
-            logger.debug(f"Navigated to page {page_number}")
 
         except Exception as e:
             logger.error(f"Failed to navigate to page {page_number}: {e}")

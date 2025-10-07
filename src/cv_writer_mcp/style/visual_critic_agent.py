@@ -107,9 +107,6 @@ class VisualCriticAgent:
                                 "image_url": f"data:image/png;base64,{base64_image}",
                             }
                         )
-                        logger.debug(
-                            f"Added screenshot {i}/{len(screenshot_paths)} to analysis ({len(base64_image)} chars)"
-                        )
                     except Exception as e:
                         logger.warning(f"Failed to process screenshot {i} ({screenshot_file}): {e}")
                         continue
@@ -148,9 +145,6 @@ class VisualCriticAgent:
                     logger.info(
                         f"✅ Visual critique complete: {len(visual_issues)} design issues identified across {output.pages_analyzed} pages"
                     )
-                    logger.debug(f"Visual issues identified by agent: {visual_issues}")
-                    if suggested_fixes:
-                        logger.debug(f"Suggested fixes: {suggested_fixes}")
 
                     # Log each visual issue for debugging
                     if visual_issues:

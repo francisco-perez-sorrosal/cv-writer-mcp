@@ -493,20 +493,12 @@ def start_mcps(
     # Configure logging
     setup_logging(config.log_level)
 
-    # Log environment information for debugging
-    logger.info(f"Python version: {sys.version}")
-    logger.info(f"Current working directory: {os.getcwd()}")
-    logger.info(
-        f"Environment variables: TRANSPORT={os.environ.get('TRANSPORT')}, HOST={os.environ.get('HOST')}, PORT={os.environ.get('PORT')}"
-    )
-    logger.info("🚀 Starting Simplified CV Writer MCP Server")
+    # Log startup information
+    logger.info("🚀 Starting CV Writer MCP Server")
     logger.info(f"📁 Output directory: {config.output_dir}")
-    logger.info(f"🌐 Base URL: {config.base_url}")
-
-    if trspt == "stdio":
-        logger.info("Using stdio transport")
-    elif trspt == "streamable-http":
-        logger.info(f"Using HTTP transport - server: http://{host}:{port}/mcp")
+    logger.info(f"🌐 Transport: {trspt}")
+    if trspt == "streamable-http":
+        logger.info(f"🌐 Server: http://{host}:{port}/mcp")
 
     # Display startup banner
     banner_text = Text()

@@ -70,17 +70,17 @@ class CVPipelineOrchestrator:
         start_time = time.time()
 
         try:
-            logger.info("=" * 70)
+            logger.info("=" * 80)
             logger.info("🚀 STARTING COMPLETE CV GENERATION PIPELINE")
-            logger.info("=" * 70)
+            logger.info("=" * 80)
 
             # ================================================================
             # PHASE 1: Markdown → LaTeX Conversion
             # ================================================================
             logger.info("")
-            logger.info("█" * 70)
+            logger.info("█" * 80)
             logger.info("📝 PHASE 1: MARKDOWN → LATEX CONVERSION")
-            logger.info("█" * 70)
+            logger.info("█" * 80)
             conversion_start = time.time()
 
             md_request = MarkdownToLaTeXRequest(
@@ -115,9 +115,9 @@ class CVPipelineOrchestrator:
             # PHASE 2: Initial Compilation (with compile-fix-compile loop)
             # ================================================================
             logger.info("")
-            logger.info("█" * 70)
+            logger.info("█" * 80)
             logger.info(f"🔨 PHASE 2: INITIAL COMPILATION (up to {max_compile_attempts} attempts)")
-            logger.info("█" * 70)
+            logger.info("█" * 80)
 
             initial_pdf_filename = tex_filename.stem + ".pdf"
             initial_pdf_path = self.config.output_dir / initial_pdf_filename
@@ -144,9 +144,7 @@ class CVPipelineOrchestrator:
                 actual_compiled_pdf.parent / f"{actual_compiled_pdf.stem}.tex"
             )
 
-            logger.info(
-                f"✅ Compilation completed in {compile_result.compilation_time:.2f}s"
-            )
+            logger.info(f"✅ Compilation completed in {compile_result.compilation_time:.2f}s")
             logger.info(f"   📄 PDF: {actual_compiled_pdf.name}")
             logger.info(f"   📝 TEX: {actual_compiled_tex.name}")
 
@@ -159,11 +157,9 @@ class CVPipelineOrchestrator:
 
             if enable_style_improvement:
                 logger.info("")
-                logger.info("█" * 70)
-                logger.info(
-                    f"🎨 PHASE 3: STYLE IMPROVEMENT ({num_style_variants} variant(s), {max_style_iterations} iteration(s))"
-                )
-                logger.info("█" * 70)
+                logger.info("█" * 80)
+                logger.info(f"🎨 PHASE 3: STYLE IMPROVEMENT ({num_style_variants} variant(s), {max_style_iterations} iteration(s))")
+                logger.info("█" * 80)
 
                 style_result = await self.style_coordinator.improve_with_variants(
                     initial_pdf_path=actual_compiled_pdf,
@@ -194,7 +190,7 @@ class CVPipelineOrchestrator:
                     )
                     logger.warning("   Using initial compilation result")
             else:
-                logger.info("\n⏭️  PHASE 3: Style improvement skipped (disabled)")
+                logger.info("⏭️  PHASE 3: Style improvement skipped (disabled)")
 
             # ================================================================
             # PIPELINE COMPLETE
@@ -202,13 +198,13 @@ class CVPipelineOrchestrator:
             total_time = time.time() - start_time
 
             logger.info("")
-            logger.info("█" * 70)
+            logger.info("█" * 80)
             logger.info("🎉 CV GENERATION PIPELINE COMPLETED!")
-            logger.info("█" * 70)
+            logger.info("█" * 80)
             logger.info(f"📊 Total time: {total_time:.2f}s")
             logger.info(f"📄 Final PDF: {final_pdf_path.name}")
             logger.info(f"📝 Final LaTeX: {final_tex_path.name}")
-            logger.info("█" * 70)
+            logger.info("█" * 80)
 
             return CVGenerationResult(
                 status=CompletionStatus.SUCCESS,
@@ -254,9 +250,9 @@ class CVPipelineOrchestrator:
         start_time = time.time()
 
         try:
-            logger.info("=" * 70)
+            logger.info("=" * 80)
             logger.info("🚀 STARTING COMPILE & IMPROVE PIPELINE")
-            logger.info("=" * 70)
+            logger.info("=" * 80)
 
             # Locate tex file
             tex_path = self.config.output_dir / tex_filename
@@ -270,8 +266,10 @@ class CVPipelineOrchestrator:
             # ================================================================
             # PHASE 1: Initial Compilation
             # ================================================================
-            logger.info("\n🔨 PHASE 1: Initial compilation")
-            logger.info("-" * 50)
+            logger.info("")
+            logger.info("█" * 80)
+            logger.info("🔨 PHASE 1: Initial compilation")
+            logger.info("█" * 80)
 
             output_name = output_filename or (tex_path.stem + ".pdf")
             if not output_name.endswith(".pdf"):
@@ -307,8 +305,10 @@ class CVPipelineOrchestrator:
             # ================================================================
             # PHASE 2: Style Improvement
             # ================================================================
-            logger.info("\n🎨 PHASE 2: Style improvement")
-            logger.info("-" * 50)
+            logger.info("")
+            logger.info("█" * 80)
+            logger.info("🎨 PHASE 2: Style improvement")
+            logger.info("█" * 80)
 
             style_result = await self.style_coordinator.improve_with_variants(
                 initial_pdf_path=actual_compiled_pdf,
@@ -349,12 +349,13 @@ class CVPipelineOrchestrator:
             # ================================================================
             total_time = time.time() - start_time
 
-            logger.info("\n" + "=" * 70)
+            logger.info("")
+            logger.info("█" * 80)
             logger.info("🎉 COMPILE & IMPROVE PIPELINE COMPLETED!")
-            logger.info("=" * 70)
+            logger.info("█" * 80)
             logger.info(f"📊 Total time: {total_time:.2f}s")
             logger.info(f"📄 Final PDF: {final_pdf_path}")
-            logger.info("=" * 70 + "\n")
+            logger.info("█" * 80)
 
             return CVGenerationResult(
                 status=CompletionStatus.SUCCESS,

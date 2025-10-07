@@ -184,11 +184,11 @@ class LaTeXExpert:
             OrchestrationResult with compilation outcome
         """
         logger.info("")
-        logger.info("─" * 70)
-        logger.info(f"🔄 COMPILATION ATTEMPT {attempt}/{max_attempts}")
-        logger.info("─" * 70)
-        logger.info(f"📄 Input TEX: {tex_file_path.name}")
-        logger.info(f"📁 Output dir: {output_path.parent}")
+        logger.info("┌" + "─" * 68 + "┐")
+        logger.info(f"│ 🔄 COMPILATION ATTEMPT {attempt}/{max_attempts}")
+        logger.info(f"│ 📄 Input TEX: {tex_file_path.name}")
+        logger.info(f"│ 📁 Output dir: {output_path.parent}")
+        logger.info("└" + "─" * 68 + "┘")
 
         try:
             compilation_result = await self._compilation_agent.compile_latex(
@@ -239,7 +239,6 @@ class LaTeXExpert:
         Returns:
             Tuple of (fixing output, corrected file path or None)
         """
-        logger.info("")
         logger.info("─" * 70)
         logger.info(f"🔧 FIXING ERRORS (After Attempt {attempt})")
         logger.info("─" * 70)

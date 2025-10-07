@@ -35,6 +35,7 @@ instructions: |
 
   <common_errors>
   - Unmatched braces: Balance {{ and }}
+  - Be extra careful with braces, they are very easy to miss specially in \\cventry commands which have to have 6 opening {{ and 6 closing }} braces
   - Undefined control sequences: Typos in command names (fix typo OR remove if not documented)
   - Unescaped special characters: (_ ^ % & # ~) need escaping
   - Environment mismatch: \begin{{X}} must match \end{{X}}

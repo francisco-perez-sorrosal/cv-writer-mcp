@@ -61,9 +61,6 @@ async def capture_pdf_screenshots(pdf_file_path: str) -> str:
                     image_path.write_bytes(screenshot_bytes)
                     screenshot_paths.append(str(image_path))
 
-                    logger.debug(
-                        f"Saved screenshot for page {page_num}: {image_path} ({len(screenshot_bytes)} bytes)"
-                    )
 
             except Exception as e:
                 logger.error(f"Screenshot capture failed: {e}")
@@ -82,7 +79,6 @@ async def capture_pdf_screenshots(pdf_file_path: str) -> str:
         logger.info(
             f"✅ Screenshot capture complete: {len(screenshot_paths)} pages in {capture_time:.2f}s"
         )
-        logger.debug(f"Screenshots saved to: {screenshot_paths}")
 
         result_data = {
             "success": True,

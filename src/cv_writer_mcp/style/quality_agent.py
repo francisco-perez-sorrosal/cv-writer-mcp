@@ -72,11 +72,11 @@ class StyleQualityAgent:
         """
         try:
             logger.info("")
-            logger.info("─" * 70)
-            logger.info("⚖️  QUALITY JUDGE: Evaluating single variant")
-            logger.info(f"📄 Original PDF: {original_pdf_path.name}")
-            logger.info(f"📄 Improved PDF: {improved_pdf_path.name}")
-            logger.info("─" * 70)
+            logger.info("┌" + "─" * 68 + "┐")
+            logger.info("│ ⚖️  QUALITY JUDGE: Evaluating single variant")
+            logger.info(f"│ 📄 Original PDF: {original_pdf_path.name}")
+            logger.info(f"│ 📄 Improved PDF: {improved_pdf_path.name}")
+            logger.info("└" + "─" * 68 + "┘")
 
             agent = self._create_agent("SingleVariantEvaluationOutput")
 
