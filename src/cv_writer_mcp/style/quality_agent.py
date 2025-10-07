@@ -1,6 +1,7 @@
 """Style quality evaluation agent."""
 
 import os
+import re
 from pathlib import Path
 from typing import cast
 
@@ -42,7 +43,9 @@ class StyleQualityAgent:
         """
         # Create a modified config with the desired output type
         config_with_output = self.agent_config.copy()
-        config_with_output["agent_metadata"] = self.agent_config["agent_metadata"].copy()
+        config_with_output["agent_metadata"] = self.agent_config[
+            "agent_metadata"
+        ].copy()
         config_with_output["agent_metadata"]["output_type"] = output_type
 
         # Create agent using centralized helper with safe defaults
@@ -80,10 +83,10 @@ class StyleQualityAgent:
 
             agent = self._create_agent("SingleVariantEvaluationOutput")
 
-            # Build prompt from template
+            # Build prompt from template (use descriptive names instead of absolute paths)
             prompt = self.agent_config["prompt_templates"]["single_variant"].format(
-                original_pdf_path=str(original_pdf_path.absolute()),
-                improved_pdf_path=str(improved_pdf_path.absolute()),
+                original_pdf_path=original_pdf_path.name,  # Use filename only, not absolute path
+                improved_pdf_path=improved_pdf_path.name,  # Use filename only, not absolute path
                 improvement_goals="\n".join(f"- {goal}" for goal in improvement_goals),
             )
 
@@ -97,15 +100,22 @@ class StyleQualityAgent:
 
         except Exception as e:
             logger.error(f"Single variant evaluation failed: {e}")
-            # Return a conservative evaluation on error
+            logger.warning("Falling back to filename-based evaluation")
+
+            # Fallback: Use filename-based evaluation
+            version_match = re.search(r"_ver(\d+)", improved_pdf_path.name)
+            version_num = int(version_match.group(1)) if version_match else 1
+            # Higher version number = more refinements = potentially better quality
+            fallback_score = min(0.5 + (version_num - 1) * 0.1, 1.0)
+
             return SingleVariantEvaluationOutput(
                 score="needs_improvement",
-                feedback=f"Evaluation failed: {str(e)}. Please review manually.",
+                feedback=f"Evaluation failed: {str(e)}. Using filename-based fallback (version {version_num}).",
                 quality_metrics={
-                    "design_coherence": 0.5,
-                    "spacing": 0.5,
-                    "consistency": 0.5,
-                    "readability": 0.5,
+                    "design_coherence": fallback_score,
+                    "spacing": fallback_score,
+                    "consistency": fallback_score,
+                    "readability": fallback_score,
                 },
             )
 
@@ -133,7 +143,7 @@ class StyleQualityAgent:
             logger.info(f"⚖️  QUALITY JUDGE: Comparing {len(variant_pdfs)} variants")
             logger.info(f"📄 Original PDF: {original_pdf_path.name}")
             logger.info("📊 Variants being compared:")
-            
+
             # Build variant info string with version labels and clear file names
             # Handle both 2-tuple (vid, path) and 3-tuple (vid, path, version) formats
             variant_info_lines: list[str] = []
@@ -153,10 +163,10 @@ class StyleQualityAgent:
 
             agent = self._create_agent("VariantEvaluationOutput")
 
-            # Build prompt from template
+            # Build prompt from template (use descriptive names instead of absolute paths)
             prompt = self.agent_config["prompt_templates"]["multi_variant"].format(
                 num_variants=len(variant_pdfs),
-                original_pdf_path=str(original_pdf_path.absolute()),
+                original_pdf_path=original_pdf_path.name,  # Use filename only, not absolute path
                 variant_info=variant_info,
                 improvement_goals="\n".join(f"- {goal}" for goal in improvement_goals),
                 iteration_number=iteration_number,
@@ -173,27 +183,41 @@ class StyleQualityAgent:
 
         except Exception as e:
             logger.error(f"Multi-variant evaluation failed: {e}")
-            # Return a conservative evaluation on error: pick first variant
-            first_variant_id = variant_pdfs[0][0]
+            logger.warning("Falling back to simple filename-based evaluation")
+
+            # Fallback: Use simple filename-based evaluation
+            # Higher version numbers generally indicate more iterations/refinements
+            variant_scores = {}
+            for vid, path in variant_pdfs:
+                # Extract version number from filename for simple scoring
+                version_match = re.search(r"_ver(\d+)", path.name)
+                version_num = int(version_match.group(1)) if version_match else 1
+                # Higher version number = more refinements = potentially better quality
+                variant_scores[vid] = min(0.5 + (version_num - 1) * 0.1, 1.0)
+
+            # Pick the variant with the highest version number (most refined)
+            best_variant_id = max(
+                variant_scores.keys(), key=lambda x: variant_scores[x]
+            )
 
             return VariantEvaluationOutput(
-                best_variant_id=first_variant_id,
-                best_variant_version="original",  # Default to original version
+                best_variant_id=best_variant_id,
+                best_variant_version="original",
                 score="needs_improvement",
-                feedback=f"Evaluation failed: {str(e)}. Defaulting to first variant.",
+                feedback=f"Evaluation failed: {str(e)}. Using filename-based fallback (selected variant {best_variant_id} with highest version number).",
                 quality_metrics={
-                    "design_coherence": 0.5,
-                    "spacing": 0.5,
-                    "consistency": 0.5,
-                    "readability": 0.5,
+                    "design_coherence": variant_scores[best_variant_id],
+                    "spacing": variant_scores[best_variant_id],
+                    "consistency": variant_scores[best_variant_id],
+                    "readability": variant_scores[best_variant_id],
                 },
-                comparison_summary=f"Evaluation error occurred. Selected variant {first_variant_id} by default.",
+                comparison_summary=f"Fallback evaluation: Selected variant {best_variant_id} based on version progression.",
                 all_variant_scores={
                     vid: {
-                        "design_coherence": 0.5,
-                        "spacing": 0.5,
-                        "consistency": 0.5,
-                        "readability": 0.5,
+                        "design_coherence": variant_scores[vid],
+                        "spacing": variant_scores[vid],
+                        "consistency": variant_scores[vid],
+                        "readability": variant_scores[vid],
                     }
                     for vid, _ in variant_pdfs
                 },

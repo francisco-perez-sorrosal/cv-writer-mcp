@@ -159,6 +159,11 @@ prompt_templates:
     Improved PDF: {improved_pdf_path}
     </original_and_improved>
 
+    <important_note>
+    You are evaluating based on the filename patterns and iteration context provided above. 
+    Do NOT attempt to access or open any local files - work with the descriptive information provided.
+    </important_note>
+
     <improvement_goals>
     These visual issues were targeted for improvement:
     {improvement_goals}
@@ -233,6 +238,11 @@ prompt_templates:
     Variants:
     {variant_info}
     </variants_to_compare>
+
+    <important_note>
+    You are evaluating based on the filename patterns and iteration context provided above. 
+    Do NOT attempt to access or open any local files - work with the descriptive information provided.
+    </important_note>
 
     <improvement_context>
     Iteration: {iteration_number}

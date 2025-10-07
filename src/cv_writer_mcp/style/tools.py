@@ -61,7 +61,6 @@ async def capture_pdf_screenshots(pdf_file_path: str) -> str:
                     image_path.write_bytes(screenshot_bytes)
                     screenshot_paths.append(str(image_path))
 
-
             except Exception as e:
                 logger.error(f"Screenshot capture failed: {e}")
                 return json.dumps(

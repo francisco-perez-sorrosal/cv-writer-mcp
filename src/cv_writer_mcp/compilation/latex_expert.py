@@ -322,7 +322,7 @@ class LaTeXExpert:
             Final compilation result
         """
         logger.info("=" * 70)
-        logger.info(f"🚀 STARTING LATEX COMPILATION ORCHESTRATION")
+        logger.info("🚀 STARTING LATEX COMPILATION ORCHESTRATION")
         logger.info(f"   Max attempts: {max_attempts}")
         logger.info(f"   Initial file: {tex_file_path.name}")
         logger.info("=" * 70)
@@ -342,9 +342,21 @@ class LaTeXExpert:
 
             # Gate: Success? Done.
             if compile_result.status == CompletionStatus.SUCCESS:
+                # Set final file paths (may be timestamped versions from error fixing)
+                compile_result.final_tex_path = current_file
+                # Derive PDF path from the final TEX file
+                final_pdf_path = current_file.parent / f"{current_file.stem}.pdf"
+                if final_pdf_path.exists():
+                    compile_result.final_pdf_path = final_pdf_path
+
                 logger.info("")
                 logger.info("=" * 70)
                 logger.info("✅ COMPILATION ORCHESTRATION SUCCEEDED")
+                logger.info(f"   📄 Final TEX: {current_file.name}")
+                if compile_result.final_pdf_path:
+                    logger.info(
+                        f"   📄 Final PDF: {compile_result.final_pdf_path.name}"
+                    )
                 logger.info(str(self._compilation_diagnostics))
                 logger.info("=" * 70)
                 return compile_result
@@ -365,6 +377,8 @@ class LaTeXExpert:
                     result = self._create_failure_result(
                         compile_result, "Error fixing failed"
                     )
+                    # Set final file paths even on failure
+                    result.final_tex_path = current_file
                     logger.error(f"❌ Orchestration failed: {result.message}")
                     logger.info(str(self._compilation_diagnostics))
                     return result
@@ -373,6 +387,8 @@ class LaTeXExpert:
         result = self._create_failure_result(
             compile_result, f"Failed after {max_attempts} attempts"
         )
+        # Set final file paths even on failure
+        result.final_tex_path = current_file
         logger.error(f"❌ Orchestration failed: {result.message}")
         logger.info(str(self._compilation_diagnostics))
         return result

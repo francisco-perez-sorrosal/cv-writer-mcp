@@ -135,7 +135,6 @@ class PDFPlaywrightComputer:
             await self.page.mouse.click(center_x, center_y)
             await asyncio.sleep(0.5)
 
-
         except Exception as e:
             logger.warning(f"Could not ensure PDF focus: {e}")
             # Continue anyway - sometimes keyboard navigation works without explicit focus
@@ -154,7 +153,6 @@ class PDFPlaywrightComputer:
             else:
                 # Use Chrome's built-in PDF viewer navigation
                 await self._navigate_chrome_pdf_page(page_number)
-
 
         except Exception as e:
             logger.error(f"Failed to navigate to page {page_number}: {e}")

@@ -2,7 +2,6 @@
 
 import asyncio
 import os
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
@@ -86,7 +85,9 @@ def _initialize_pipeline_orchestrator(config: ServerConfig) -> CVPipelineOrchest
 
 
 def _validate_prerequisites(
-    check_openai: bool = True, check_latex: bool = True, config: ServerConfig | None = None
+    check_openai: bool = True,
+    check_latex: bool = True,
+    config: ServerConfig | None = None,
 ) -> None:
     """Validate prerequisites for CV generation.
 
@@ -928,21 +929,23 @@ def generate_cv_from_markdown_cli(
     # Check if markdown file exists and read content
     md_path = Path(markdown_file)
     if not md_path.exists():
-        console.print(f"[red]❌ Error: Markdown file not found at '{markdown_file}'[/red]")
+        console.print(
+            f"[red]❌ Error: Markdown file not found at '{markdown_file}'[/red]"
+        )
         raise typer.Exit(1)
 
     try:
         markdown_content = md_path.read_text(encoding="utf-8")
     except Exception as e:
         console.print(f"[red]❌ Error reading markdown file: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     # Validate prerequisites using shared helper
     try:
         _validate_prerequisites(check_openai=True, check_latex=True, config=config)
     except ValueError as e:
         console.print(f"[red]❌ Error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     # Initialize pipeline using shared helper
     console.print("[blue]🔧 Initializing pipeline components...[/blue]")
@@ -1019,9 +1022,7 @@ def compile_and_improve_style_cli(
     max_compile_attempts: int = typer.Option(
         3, "--max-compile", "-c", help="Max compilation attempts (default: 3)"
     ),
-    quality: bool = typer.Option(
-        False, "--quality", help="Force enable quality judge"
-    ),
+    quality: bool = typer.Option(False, "--quality", help="Force enable quality judge"),
     debug: bool = typer.Option(False, "--debug", help="Run in debug mode"),
 ) -> None:
     """Compile LaTeX and improve styling: LaTeX → PDF → Style → Final PDF.
@@ -1046,7 +1047,7 @@ def compile_and_improve_style_cli(
         _validate_prerequisites(check_openai=True, check_latex=True, config=config)
     except ValueError as e:
         console.print(f"[red]❌ Error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     # Initialize pipeline using shared helper
     console.print("[blue]🔧 Initializing pipeline components...[/blue]")

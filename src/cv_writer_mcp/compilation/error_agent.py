@@ -11,7 +11,12 @@ from agents import Agent, Runner
 from loguru import logger
 
 from ..models import CompletionStatus, ServerConfig, create_agent_from_config
-from ..utils import create_timestamped_version, load_agent_config, read_text_file
+from ..utils import (
+    create_versioned_file,
+    get_next_version_number,
+    load_agent_config,
+    read_text_file,
+)
 from .models import (
     CompilationDiagnostics,
     CompilationErrorOutput,
@@ -326,16 +331,17 @@ class CompilationErrorAgent:
                     f"Error fixing completed: {fixing_output.total_fixes} fixes applied"
                 )
 
-                # Create timestamped version with the corrected content
-                timestamped_version = create_timestamped_version(tex_file_path)
-                timestamped_version.write_text(
+                # Create versioned file with the corrected content
+                next_version = get_next_version_number(tex_file_path)
+                versioned_file = create_versioned_file(tex_file_path, next_version)
+                versioned_file.write_text(
                     fixing_output.corrected_content, encoding="utf-8"
                 )
 
                 logger.info(
-                    f"Successfully saved corrected content to: {timestamped_version}"
+                    f"Successfully saved corrected content to: {versioned_file.name} (v{next_version})"
                 )
-                return fixing_output, timestamped_version
+                return fixing_output, versioned_file
             else:
                 logger.warning("Error fixing did not modify the file or failed")
                 return fixing_output, None

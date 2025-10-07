@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-from agents import Agent, Runner
+from agents import Runner
 from loguru import logger
 
 from ..models import CompletionStatus, create_agent_from_config

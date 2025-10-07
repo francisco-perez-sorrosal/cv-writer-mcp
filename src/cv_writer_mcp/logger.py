@@ -84,16 +84,16 @@ def get_logger(name: str | None = None) -> "Logger":
         Logger instance with simplified module path
     """
     import inspect
-    
+
     if name:
         # Extract just the last part of the module path
-        module_name = name.split('.')[-1]
+        module_name = name.split(".")[-1]
         # Create a custom logger that overrides the name field
         return loguru_logger.patch(lambda record: record.update(name=module_name))
-    
+
     # Auto-detect calling module
     frame = inspect.currentframe().f_back
-    module_name = frame.f_globals.get('__name__', 'unknown')
+    module_name = frame.f_globals.get("__name__", "unknown")
     # Extract just the last part of the module path
-    simple_module = module_name.split('.')[-1]
+    simple_module = module_name.split(".")[-1]
     return loguru_logger.patch(lambda record: record.update(name=simple_module))

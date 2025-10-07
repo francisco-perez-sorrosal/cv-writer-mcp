@@ -48,6 +48,66 @@ def create_timestamped_version(tex_file_path: Path) -> Path:
         return tex_file_path  # Return original path if backup fails
 
 
+def create_versioned_file(base_path: Path, version: int) -> Path:
+    """Create a versioned file with the pattern: base_name_ver<version>.ext
+
+    Args:
+        base_path: Base file path (e.g., iter1_var1.tex)
+        version: Version number (e.g., 1, 2, 3)
+
+    Returns:
+        Path to the versioned file (e.g., iter1_var1_ver1.tex)
+    """
+    # Extract base name without any existing version patterns
+    base_stem = base_path.stem
+
+    # Remove any existing version patterns (_ver<number>)
+    base_stem = re.sub(r"_ver\d+$", "", base_stem)
+
+    # Remove any legacy patterns (_refined, _timestamp, etc.)
+    base_stem = re.sub(r"_(refined|refined_\d{8}_\d{6}|\d{8}_\d{6})$", "", base_stem)
+
+    # Remove any remaining version patterns after cleaning legacy patterns
+    base_stem = re.sub(r"_ver\d+$", "", base_stem)
+
+    suffix = base_path.suffix
+    new_filename = f"{base_stem}_ver{version}{suffix}"
+
+    return base_path.parent / new_filename
+
+
+def get_next_version_number(base_path: Path) -> int:
+    """Get the next version number for a base file path.
+
+    Args:
+        base_path: Base file path to check for existing versions
+
+    Returns:
+        Next version number (1 if no versions exist)
+    """
+    base_stem = base_path.stem
+
+    # Remove any existing version patterns to get the clean base
+    clean_base = re.sub(r"_ver\d+$", "", base_stem)
+    clean_base = re.sub(r"_(refined|refined_\d{8}_\d{6}|\d{8}_\d{6})$", "", clean_base)
+
+    # Remove any remaining version patterns after cleaning legacy patterns
+    clean_base = re.sub(r"_ver\d+$", "", clean_base)
+
+    # Find all existing version files
+    parent_dir = base_path.parent
+    pattern = f"{clean_base}_ver*.{base_path.suffix[1:]}"  # Remove the dot from suffix
+
+    existing_versions = []
+    for file_path in parent_dir.glob(pattern):
+        match = re.search(r"_ver(\d+)$", file_path.stem)
+        if match:
+            existing_versions.append(int(match.group(1)))
+
+    # Return next version number
+    return max(existing_versions, default=0) + 1
+
+
 def create_organized_backup(tex_file_path: Path, backup_type: str = "backup") -> Path:
     """Create an organized backup version with clear naming.
 
@@ -66,7 +126,9 @@ def create_organized_backup(tex_file_path: Path, backup_type: str = "backup") ->
     # Remove any existing timestamp pattern (_YYYYMMDD_HHMMSS)
     original_stem = re.sub(r"_\d{8}_\d{6}$", "", original_stem)
     # Remove any existing backup patterns (_backup, _before_fix, etc.)
-    original_stem = re.sub(r"_(backup|before_fix|after_fix|refined)$", "", original_stem)
+    original_stem = re.sub(
+        r"_(backup|before_fix|after_fix|refined)$", "", original_stem
+    )
 
     suffix = tex_file_path.suffix
     new_filename = f"{original_stem}_{backup_type}_{timestamp}{suffix}"

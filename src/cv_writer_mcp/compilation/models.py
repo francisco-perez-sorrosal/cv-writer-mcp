@@ -76,6 +76,9 @@ class OrchestrationResult(BaseModel):
     compilation_time: float = 0.0
     errors_found: list[str] | None = None
     exit_code: int = 0
+    # Final file paths after error fixing (may be timestamped versions)
+    final_tex_path: Path | None = None
+    final_pdf_path: Path | None = None
 
     def __str__(self) -> str:
         lines = [
@@ -86,6 +89,10 @@ class OrchestrationResult(BaseModel):
             f"  Message: {self.message}",
             f"  Output Path: {self.output_path}",
         ]
+        if self.final_tex_path:
+            lines.append(f"  Final TEX Path: {self.final_tex_path}")
+        if self.final_pdf_path:
+            lines.append(f"  Final PDF Path: {self.final_pdf_path}")
         if self.errors_found:
             lines.append(f"  Errors Found: {len(self.errors_found)}")
             for i, error in enumerate(self.errors_found[:3], 1):

@@ -116,7 +116,9 @@ class CVPipelineOrchestrator:
             # ================================================================
             logger.info("")
             logger.info("█" * 80)
-            logger.info(f"🔨 PHASE 2: INITIAL COMPILATION (up to {max_compile_attempts} attempts)")
+            logger.info(
+                f"🔨 PHASE 2: INITIAL COMPILATION (up to {max_compile_attempts} attempts)"
+            )
             logger.info("█" * 80)
 
             initial_pdf_filename = tex_filename.stem + ".pdf"
@@ -144,7 +146,9 @@ class CVPipelineOrchestrator:
                 actual_compiled_pdf.parent / f"{actual_compiled_pdf.stem}.tex"
             )
 
-            logger.info(f"✅ Compilation completed in {compile_result.compilation_time:.2f}s")
+            logger.info(
+                f"✅ Compilation completed in {compile_result.compilation_time:.2f}s"
+            )
             logger.info(f"   📄 PDF: {actual_compiled_pdf.name}")
             logger.info(f"   📝 TEX: {actual_compiled_tex.name}")
 
@@ -158,7 +162,9 @@ class CVPipelineOrchestrator:
             if enable_style_improvement:
                 logger.info("")
                 logger.info("█" * 80)
-                logger.info(f"🎨 PHASE 3: STYLE IMPROVEMENT ({num_style_variants} variant(s), {max_style_iterations} iteration(s))")
+                logger.info(
+                    f"🎨 PHASE 3: STYLE IMPROVEMENT ({num_style_variants} variant(s), {max_style_iterations} iteration(s))"
+                )
                 logger.info("█" * 80)
 
                 style_result = await self.style_coordinator.improve_with_variants(

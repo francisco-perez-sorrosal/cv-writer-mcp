@@ -29,7 +29,6 @@ class TestMD2LaTeXAgent:
             patch(
                 "cv_writer_mcp.conversion.md2latex_agent.read_text_file"
             ) as mock_read_file,
-            patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class,
         ):
 
             # Mock config
@@ -47,9 +46,6 @@ class TestMD2LaTeXAgent:
             # Mock file reading
             mock_read_file.return_value = "test content"
 
-            # Mock agent creation
-            mock_agent = MagicMock()
-            mock_agent_class.return_value = mock_agent
 
             agent = MD2LaTeXAgent(api_key="test-key")
 
@@ -57,7 +53,6 @@ class TestMD2LaTeXAgent:
             assert agent.model == "gpt-4"
             assert agent.agent is not None
             mock_load_config.assert_called_once_with("md2latex_agent.yaml")
-            mock_agent_class.assert_called_once()
 
     def test_initialization_no_openai_key(self):
         """Test MD2LaTeXAgent initialization without OpenAI API key."""
@@ -75,7 +70,6 @@ class TestMD2LaTeXAgent:
             patch(
                 "cv_writer_mcp.conversion.md2latex_agent.read_text_file"
             ) as mock_read_file,
-            patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class,
             patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner,
             patch("pathlib.Path.write_text") as mock_write,
         ):
@@ -95,9 +89,6 @@ class TestMD2LaTeXAgent:
             # Mock file reading
             mock_read_file.return_value = "test content"
 
-            # Mock agent creation
-            mock_agent = MagicMock()
-            mock_agent_class.return_value = mock_agent
 
             # Mock runner result
             mock_result = MagicMock()
@@ -132,7 +123,6 @@ class TestMD2LaTeXAgent:
             patch(
                 "cv_writer_mcp.conversion.md2latex_agent.read_text_file"
             ) as mock_read_file,
-            patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class,
             patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner,
         ):
 
@@ -151,9 +141,6 @@ class TestMD2LaTeXAgent:
             # Mock file reading
             mock_read_file.return_value = "test content"
 
-            # Mock agent creation
-            mock_agent = MagicMock()
-            mock_agent_class.return_value = mock_agent
 
             # Mock runner result with empty content
             mock_result = MagicMock()
@@ -188,7 +175,6 @@ class TestMD2LaTeXAgent:
             patch(
                 "cv_writer_mcp.conversion.md2latex_agent.read_text_file"
             ) as mock_read_file,
-            patch("cv_writer_mcp.conversion.md2latex_agent.Agent") as mock_agent_class,
             patch("cv_writer_mcp.conversion.md2latex_agent.Runner") as mock_runner,
         ):
 
@@ -207,9 +193,6 @@ class TestMD2LaTeXAgent:
             # Mock file reading
             mock_read_file.return_value = "test content"
 
-            # Mock agent creation
-            mock_agent = MagicMock()
-            mock_agent_class.return_value = mock_agent
 
             # Mock runner to raise exception
             mock_runner.run = AsyncMock(side_effect=Exception("Test error"))

@@ -91,14 +91,18 @@ class VisualCriticAgent:
 
                             # Validate image data is not empty
                             if not image_data:
-                                logger.warning(f"Screenshot {i} is empty, skipping: {screenshot_file}")
+                                logger.warning(
+                                    f"Screenshot {i} is empty, skipping: {screenshot_file}"
+                                )
                                 continue
 
                             base64_image = base64.b64encode(image_data).decode("utf-8")
 
                             # Validate base64 encoding succeeded
                             if not base64_image:
-                                logger.warning(f"Failed to encode screenshot {i}, skipping: {screenshot_file}")
+                                logger.warning(
+                                    f"Failed to encode screenshot {i}, skipping: {screenshot_file}"
+                                )
                                 continue
 
                         content.append(
@@ -108,7 +112,9 @@ class VisualCriticAgent:
                             }
                         )
                     except Exception as e:
-                        logger.warning(f"Failed to process screenshot {i} ({screenshot_file}): {e}")
+                        logger.warning(
+                            f"Failed to process screenshot {i} ({screenshot_file}): {e}"
+                        )
                         continue
 
             # Validate we have at least one image to analyze

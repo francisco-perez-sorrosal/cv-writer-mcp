@@ -92,7 +92,8 @@ class FormattingOutput(BaseModel):
         description="The improved LaTeX file content with all formatting improvements applied",
     )
     implementation_notes: str = Field(
-        ..., description="Summary of how changes maintain design coherence and support variant philosophy"
+        ...,
+        description="Summary of how changes maintain design coherence and support variant philosophy",
     )
 
 
@@ -150,10 +151,12 @@ class VariantEvaluationOutput(BaseModel):
         ..., description="Version of the best variant: 'original', 'refined', etc."
     )
     score: Literal["pass", "needs_improvement", "fail"] = Field(
-        ..., description="Quality score for the best variant based on overall weighted score"
+        ...,
+        description="Quality score for the best variant based on overall weighted score",
     )
     feedback: str = Field(
-        ..., description="Specific feedback for improvements in next iteration (if needed)"
+        ...,
+        description="Specific feedback for improvements in next iteration (if needed)",
     )
     quality_metrics: dict[str, float] = Field(
         ...,
@@ -215,10 +218,12 @@ class VariantResult(BaseModel):
         None, description="Validation result if visual validation was performed"
     )
     version: str = Field(
-        "original", description="Version label: 'original', 'refined', 'refined_v2', etc."
+        "original",
+        description="Version label: 'original', 'refined', 'refined_v2', etc.",
     )
     parent_variant: "VariantResult | None" = Field(
-        None, description="Reference to parent variant (for tracking refinement lineage)"
+        None,
+        description="Reference to parent variant (for tracking refinement lineage)",
     )
 
 
@@ -230,10 +235,12 @@ class EvaluationResult(BaseModel):
     score: str = Field(..., description="Quality score")
     feedback: str = Field(..., description="Feedback for next iteration")
     quality_metrics: dict[str, float] | None = Field(
-        None, description="Quality metrics for best variant (design_coherence, spacing, consistency, readability)"
+        None,
+        description="Quality metrics for best variant (design_coherence, spacing, consistency, readability)",
     )
     comparison_summary: str | None = Field(
-        None, description="Judge's detailed explanation of variant selection (multi-variant only)"
+        None,
+        description="Judge's detailed explanation of variant selection (multi-variant only)",
     )
     all_variant_scores: dict[int, dict[str, float]] | None = Field(
         None, description="Scores for all variants (multi-variant only)"

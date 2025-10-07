@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -11,6 +12,7 @@ if TYPE_CHECKING:
     from ..compilation.latex_expert import LaTeXExpert
 
 from ..models import CompletionStatus
+from ..utils import create_versioned_file, get_next_version_number
 from .formatting_agent import FormattingAgent
 from .models import (
     EvaluationResult,
@@ -113,13 +115,19 @@ class PDFStyleCoordinator:
         # Initialize state
         current_pdf = initial_pdf_path
         current_tex_content = initial_tex_path.read_text(encoding="utf-8")
-        iteration_feedback: str | None = None  # None for first iteration, set by judge feedback
+        iteration_feedback: str | None = (
+            None  # None for first iteration, set by judge feedback
+        )
         best_result = None
 
         logger.info("=" * 80)
         logger.info("🎨 STARTING MULTI-VARIANT STYLE IMPROVEMENT")
-        logger.info(f"   Iterations: {max_iterations}, Variants per iteration: {num_variants}")
-        logger.info(f"   Quality validation: {'enabled' if enable_quality_validation else 'disabled'}")
+        logger.info(
+            f"   Iterations: {max_iterations}, Variants per iteration: {num_variants}"
+        )
+        logger.info(
+            f"   Quality validation: {'enabled' if enable_quality_validation else 'disabled'}"
+        )
         logger.info("=" * 80)
 
         # OUTER LOOP: Style iterations
@@ -131,8 +139,10 @@ class PDFStyleCoordinator:
 
             # Step 1: Capture & Analyze current PDF
             if current_pdf is None:
-                raise ValueError("Current PDF path is None - cannot proceed with style improvement")
-            
+                raise ValueError(
+                    "Current PDF path is None - cannot proceed with style improvement"
+                )
+
             capture_result = await self._capture_and_analyze_pdf(current_pdf)
             if capture_result.status != CompletionStatus.SUCCESS:
                 logger.error(f"Page capture failed: {capture_result.message}")
@@ -140,7 +150,9 @@ class PDFStyleCoordinator:
 
             logger.info("")
             logger.info("┌" + "─" * 78 + "┐")
-            logger.info(f"│ 📊 VISUAL ANALYSIS: {len(capture_result.visual_issues)} issues found")
+            logger.info(
+                f"│ 📊 VISUAL ANALYSIS: {len(capture_result.visual_issues)} issues found"
+            )
             logger.info("└" + "─" * 78 + "┘")
 
             # Step 2: Generate N variants in parallel
@@ -192,7 +204,7 @@ class PDFStyleCoordinator:
             # Step 4: Quality Evaluation (variants already include validation/refinement)
             if current_pdf is None:
                 raise ValueError("Current PDF path is None - cannot evaluate quality")
-            
+
             eval_result = await self._evaluate_quality(
                 enable_quality_validation=enable_quality_validation,
                 num_variants=num_variants,
@@ -204,12 +216,18 @@ class PDFStyleCoordinator:
 
             # Track diagnostics from variants (already computed during parallel processing)
             variants_with_issues = sum(
-                1 for v in successful_variants if v.validation and v.validation.has_critical_regressions
+                1
+                for v in successful_variants
+                if v.validation and v.validation.has_critical_regressions
             )
             variants_refined = sum(
-                1 for v in successful_variants if v.validation and v.validation.was_refined
+                1
+                for v in successful_variants
+                if v.validation and v.validation.was_refined
             )
-            diagnostics.variants_validated_per_iteration.append(len(successful_variants))
+            diagnostics.variants_validated_per_iteration.append(
+                len(successful_variants)
+            )
             diagnostics.variants_with_issues_per_iteration.append(variants_with_issues)
             diagnostics.variants_refined_per_iteration.append(variants_refined)
 
@@ -236,29 +254,35 @@ class PDFStyleCoordinator:
 
             # Display comparison reasoning (multi-variant only)
             if eval_result.comparison_summary:
-                logger.info(f"")
-                logger.info(f"🧠 Judge Reasoning:")
+                logger.info("")
+                logger.info("🧠 Judge Reasoning:")
                 # Split summary into lines for better readability
-                for line in eval_result.comparison_summary.split('. '):
+                for line in eval_result.comparison_summary.split(". "):
                     if line.strip():
                         logger.info(f"   {line.strip()}.")
-                logger.info(f"")
+                logger.info("")
 
             # Display all variant scores (multi-variant only)
             if eval_result.all_variant_scores:
-                logger.info(f"📊 All Variant Scores:")
-                for variant_id, scores in sorted(eval_result.all_variant_scores.items()):
+                logger.info("📊 All Variant Scores:")
+                for variant_id, scores in sorted(
+                    eval_result.all_variant_scores.items()
+                ):
                     # Calculate weighted score
-                    weighted = (scores.get('design_coherence', 0) * 0.30 +
-                               scores.get('spacing', 0) * 0.25 +
-                               scores.get('consistency', 0) * 0.25 +
-                               scores.get('readability', 0) * 0.20)
-                    logger.info(f"   Variant {variant_id}: coherence={scores.get('design_coherence', 0):.2f}, "
-                               f"spacing={scores.get('spacing', 0):.2f}, "
-                               f"consistency={scores.get('consistency', 0):.2f}, "
-                               f"readability={scores.get('readability', 0):.2f} "
-                               f"→ weighted={weighted:.3f}")
-                logger.info(f"")
+                    weighted = (
+                        scores.get("design_coherence", 0) * 0.30
+                        + scores.get("spacing", 0) * 0.25
+                        + scores.get("consistency", 0) * 0.25
+                        + scores.get("readability", 0) * 0.20
+                    )
+                    logger.info(
+                        f"   Variant {variant_id}: coherence={scores.get('design_coherence', 0):.2f}, "
+                        f"spacing={scores.get('spacing', 0):.2f}, "
+                        f"consistency={scores.get('consistency', 0):.2f}, "
+                        f"readability={scores.get('readability', 0):.2f} "
+                        f"→ weighted={weighted:.3f}"
+                    )
+                logger.info("")
 
             # Step 5: Decision
             if eval_result.score == "pass":
@@ -291,7 +315,9 @@ class PDFStyleCoordinator:
             logger.info("🎉 STYLE IMPROVEMENT COMPLETED")
             logger.info("█" * 80)
             logger.info(f"   Iterations: {diagnostics.iterations_completed}")
-            logger.info(f"   Best variant: {best_result.variant_id} ({best_result.version})")
+            logger.info(
+                f"   Best variant: {best_result.variant_id} ({best_result.version})"
+            )
             if best_result.pdf_path:
                 logger.info(f"   Final PDF: {best_result.pdf_path.name}")
             else:
@@ -361,15 +387,16 @@ class PDFStyleCoordinator:
         enable_variant_refinement: bool = True,
     ) -> list[VariantResult | None]:
         """Generate N variants in parallel using asyncio.gather.
-        
+
         Each variant progresses through its complete lifecycle independently:
         Generation → Compilation → Validation → Refinement (if needed)
         """
         import time
+
         start_time = time.time()
-        
+
         logger.info(f"🚀 Starting {num_variants} variants in PARALLEL...")
-        
+
         # Create tasks for parallel execution
         tasks = [
             self._generate_single_variant(
@@ -391,14 +418,16 @@ class PDFStyleCoordinator:
 
         # Execute all variants in parallel
         results = await asyncio.gather(*tasks, return_exceptions=False)
-        
+
         end_time = time.time()
         duration = end_time - start_time
-        
+
         successful_count = sum(1 for r in results if r is not None)
         logger.info(f"✅ Parallel processing completed in {duration:.1f}s")
-        logger.info(f"   {successful_count}/{num_variants} variants completed successfully")
-        
+        logger.info(
+            f"   {successful_count}/{num_variants} variants completed successfully"
+        )
+
         return results
 
     async def _generate_single_variant(
@@ -436,17 +465,21 @@ class PDFStyleCoordinator:
                 logger.error(f"  Variant {variant_id}: ❌ Formatting failed")
                 return None
 
-            # Save variant LaTeX with organized naming
-            variant_tex_path = output_dir / f"iter{iteration}_var{variant_id}.tex"
+            # Save variant LaTeX with organized naming using version system
+            base_tex_path = output_dir / f"iter{iteration}_var{variant_id}.tex"
+            variant_tex_path = create_versioned_file(
+                base_tex_path, 1
+            )  # v1 for base variant
             variant_tex_path.write_text(
                 formatting_output.improved_latex_content, encoding="utf-8"
             )
 
             # Step 2: Compile variant (optional - only if latex_expert provided)
             if latex_expert:
-                variant_pdf_path = (
-                    output_dir / f"iter{iteration}_var{variant_id}.pdf"
-                )
+                base_pdf_path = output_dir / f"iter{iteration}_var{variant_id}.pdf"
+                variant_pdf_path = create_versioned_file(
+                    base_pdf_path, 1
+                )  # v1 for base variant
 
                 # Import LaTeXEngine here to avoid circular imports
                 from ..compilation.models import LaTeXEngine
@@ -466,11 +499,34 @@ class PDFStyleCoordinator:
 
                 logger.info(f"  Variant {variant_id}: ✅ Compiled successfully!")
 
-                # Create initial variant result
+                # Use final file paths from LaTeX expert (may be timestamped versions from error fixing)
+                final_tex_path = compile_result.final_tex_path or variant_tex_path
+                final_pdf_path = compile_result.final_pdf_path or variant_pdf_path
+
+                if final_tex_path != variant_tex_path:
+                    # Extract version number from filename
+                    version_match = re.search(r"_ver(\d+)", final_tex_path.name)
+                    version_info = (
+                        f" (v{version_match.group(1)})" if version_match else ""
+                    )
+                    logger.info(
+                        f"  📄 Using versioned TEX: {final_tex_path.name}{version_info}"
+                    )
+                if final_pdf_path != variant_pdf_path:
+                    # Extract version number from filename
+                    version_match = re.search(r"_ver(\d+)", final_pdf_path.name)
+                    version_info = (
+                        f" (v{version_match.group(1)})" if version_match else ""
+                    )
+                    logger.info(
+                        f"  📄 Using versioned PDF: {final_pdf_path.name}{version_info}"
+                    )
+
+                # Create initial variant result with final paths
                 variant_result = VariantResult(
                     variant_id=variant_id,
-                    pdf_path=variant_pdf_path,
-                    tex_path=variant_tex_path,
+                    pdf_path=final_pdf_path,
+                    tex_path=final_tex_path,
                     compilation_time=compile_result.compilation_time,
                     validation=None,
                     version="original",
@@ -481,21 +537,21 @@ class PDFStyleCoordinator:
                 if enable_variant_validation and original_issues:
                     # Visual validation
                     validation = await self._validate_variant(variant_result)
-                    
+
                     # Identify critical regressions
                     has_critical, critical_issues = self._identify_critical_regressions(
                         validation.visual_issues, original_issues
                     )
-                    
+
                     validation.has_critical_regressions = has_critical
                     validation.critical_issues = critical_issues
-                    
+
                     # Refine if needed
                     if has_critical and enable_variant_refinement:
                         logger.warning(
                             f"  Variant {variant_id}: ⚠️  {len(critical_issues)} critical regression(s), refining..."
                         )
-                        
+
                         refined_variant = await self._refine_variant(
                             variant_result,
                             validation,
@@ -504,16 +560,20 @@ class PDFStyleCoordinator:
                             output_dir,
                             iteration,
                         )
-                        
+
                         if refined_variant:
-                            logger.info(f"  Variant {variant_id}: ✅ Refined successfully")
+                            logger.info(
+                                f"  Variant {variant_id}: ✅ Refined successfully"
+                            )
                             return refined_variant
                         else:
-                            logger.warning(f"  Variant {variant_id}: ❌ Refinement failed, using original")
-                    
+                            logger.warning(
+                                f"  Variant {variant_id}: ❌ Refinement failed, using original"
+                            )
+
                     # Attach validation metadata to variant
                     variant_result.validation = validation
-                
+
                 logger.info(f"🎉 Variant {variant_id}: Complete!")
                 return variant_result
             else:
@@ -560,24 +620,36 @@ class PDFStyleCoordinator:
 
         # Filter variants with valid PDF paths for quality evaluation
         variants_with_pdfs = [v for v in successful_variants if v.pdf_path is not None]
-        
+
         if num_variants >= 2 and len(variants_with_pdfs) >= 2:
             # Multi-variant evaluation
             logger.info("")
             logger.info("┌" + "─" * 78 + "┐")
-            logger.info(f"│ ⚖️  MAIN JUDGE: Comparing {len(variants_with_pdfs)} variants (Iteration {iteration})")
+            logger.info(
+                f"│ ⚖️  MAIN JUDGE: Comparing {len(variants_with_pdfs)} variants (Iteration {iteration})"
+            )
             logger.info(f"│ 📄 Original PDF: {original_pdf.name}")
             for v in variants_with_pdfs:
                 if v.pdf_path:
-                    logger.info(f"│   📄 Variant {v.variant_id} ({v.version}): {v.pdf_path.name}")
+                    version_match = re.search(r"_ver(\d+)", v.pdf_path.name)
+                    version_info = (
+                        f" (v{version_match.group(1)})" if version_match else ""
+                    )
+                    logger.info(
+                        f"│   📄 Variant {v.variant_id} ({v.version}): {v.pdf_path.name}{version_info}"
+                    )
                 else:
-                    logger.info(f"│   📄 Variant {v.variant_id} ({v.version}): No PDF available")
+                    logger.info(
+                        f"│   📄 Variant {v.variant_id} ({v.version}): No PDF available"
+                    )
             logger.info("└" + "─" * 78 + "┘")
-            
+
             # Prepare variant PDFs for comparison: (id, path) tuples
             # Filter to ensure all paths are non-None
             variant_pdfs = [
-                (v.variant_id, v.pdf_path) for v in variants_with_pdfs if v.pdf_path is not None
+                (v.variant_id, v.pdf_path)
+                for v in variants_with_pdfs
+                if v.pdf_path is not None
             ]
 
             judge_output = await self.quality_agent.evaluate_variants(
@@ -595,7 +667,9 @@ class PDFStyleCoordinator:
 
             logger.info("")
             logger.info("┌" + "─" * 78 + "┐")
-            logger.info(f"│ 🏆 MAIN JUDGE RESULT: Selected Variant {best.variant_id} ({best.version})")
+            logger.info(
+                f"│ 🏆 MAIN JUDGE RESULT: Selected Variant {best.variant_id} ({best.version})"
+            )
             if best.pdf_path:
                 logger.info(f"│ 📄 Winning file: {best.pdf_path.name}")
             else:
@@ -615,13 +689,19 @@ class PDFStyleCoordinator:
         else:
             # Single variant evaluation
             # Use first variant with PDF, fallback to any variant
-            best = variants_with_pdfs[0] if variants_with_pdfs else successful_variants[0]
+            best = (
+                variants_with_pdfs[0] if variants_with_pdfs else successful_variants[0]
+            )
             logger.info("")
             logger.info("┌" + "─" * 78 + "┐")
-            logger.info(f"│ ⚖️  SINGLE VARIANT JUDGE: Evaluating variant {best.variant_id} (Iteration {iteration})")
+            logger.info(
+                f"│ ⚖️  SINGLE VARIANT JUDGE: Evaluating variant {best.variant_id} (Iteration {iteration})"
+            )
             logger.info(f"│ 📄 Original PDF: {original_pdf.name}")
             if best.pdf_path:
-                logger.info(f"│ 📄 Improved PDF: {best.pdf_path.name}")
+                version_match = re.search(r"_ver(\d+)", best.pdf_path.name)
+                version_info = f" (v{version_match.group(1)})" if version_match else ""
+                logger.info(f"│ 📄 Improved PDF: {best.pdf_path.name}{version_info}")
             else:
                 logger.info("│ 📄 Improved PDF: No PDF available (compilation skipped)")
             logger.info("└" + "─" * 78 + "┘")
@@ -635,15 +715,23 @@ class PDFStyleCoordinator:
             else:
                 # No PDF available - return dummy result
                 from .models import SingleVariantEvaluationOutput
+
                 single_judge_output = SingleVariantEvaluationOutput(
                     score="needs_improvement",
-                    quality_metrics={"design_coherence": 0.5, "spacing": 0.5, "consistency": 0.5, "readability": 0.5},
+                    quality_metrics={
+                        "design_coherence": 0.5,
+                        "spacing": 0.5,
+                        "consistency": 0.5,
+                        "readability": 0.5,
+                    },
                     feedback="No PDF available for evaluation - compilation was skipped",
                 )
 
             logger.info("")
             logger.info("┌" + "─" * 78 + "┐")
-            logger.info(f"│ 🏆 SINGLE VARIANT JUDGE RESULT: Evaluated Variant {best.variant_id}")
+            logger.info(
+                f"│ 🏆 SINGLE VARIANT JUDGE RESULT: Evaluated Variant {best.variant_id}"
+            )
             if best.pdf_path:
                 logger.info(f"│ 📄 File: {best.pdf_path.name}")
             else:
@@ -661,9 +749,7 @@ class PDFStyleCoordinator:
                 all_variant_scores=None,  # Single variant has no comparison
             )
 
-    async def _validate_variant(
-        self, variant: VariantResult
-    ) -> VariantValidation:
+    async def _validate_variant(self, variant: VariantResult) -> VariantValidation:
         """Visually validate a single variant PDF to detect issues.
 
         Args:
@@ -794,11 +880,15 @@ class PDFStyleCoordinator:
         logger.info("┌" + "─" * 48 + "┐")
         logger.info(f"│ 🔍 BRANCH JUDGE: Comparing variant {original.variant_id}")
         if original.pdf_path:
-            logger.info(f"│ 📄 Original: {original.pdf_path.name}")
+            version_match = re.search(r"_ver(\d+)", original.pdf_path.name)
+            version_info = f" (v{version_match.group(1)})" if version_match else ""
+            logger.info(f"│ 📄 Original: {original.pdf_path.name}{version_info}")
         else:
             logger.info("│ 📄 Original: No PDF available")
         if refined.pdf_path:
-            logger.info(f"│ 📄 Refined:  {refined.pdf_path.name}")
+            version_match = re.search(r"_ver(\d+)", refined.pdf_path.name)
+            version_info = f" (v{version_match.group(1)})" if version_match else ""
+            logger.info(f"│ 📄 Refined:  {refined.pdf_path.name}{version_info}")
         else:
             logger.info("│ 📄 Refined:  No PDF available")
         logger.info("└" + "─" * 48 + "┘")
@@ -808,12 +898,12 @@ class PDFStyleCoordinator:
             if not original.pdf_path or not refined.pdf_path:
                 logger.warning("Cannot compare variants without PDFs")
                 return original
-            
+
             # Use temporary IDs for comparison: 1=original, 2=refined
             # This allows the judge to clearly distinguish between versions
             variant_pdfs = [
                 (1, original.pdf_path),  # Version 1 = original
-                (2, refined.pdf_path),   # Version 2 = refined
+                (2, refined.pdf_path),  # Version 2 = refined
             ]
 
             # Use quality agent to compare the two versions
@@ -831,7 +921,9 @@ class PDFStyleCoordinator:
                 winner.version = "original"
                 logger.info("")
                 logger.info("┌" + "─" * 48 + "┐")
-                logger.info(f"│ 🏆 BRANCH JUDGE RESULT: Selected ORIGINAL for variant {original.variant_id}")
+                logger.info(
+                    f"│ 🏆 BRANCH JUDGE RESULT: Selected ORIGINAL for variant {original.variant_id}"
+                )
                 logger.info(f"│ 📄 Winning file: {original.pdf_path.name}")
                 logger.info(f"│ 📊 Score: {evaluation.score}")
                 logger.info("│ 💡 Refinement did not improve quality")
@@ -842,7 +934,9 @@ class PDFStyleCoordinator:
                 winner.version = "refined"
                 logger.info("")
                 logger.info("┌" + "─" * 48 + "┐")
-                logger.info(f"│ 🏆 BRANCH JUDGE RESULT: Selected REFINED for variant {original.variant_id}")
+                logger.info(
+                    f"│ 🏆 BRANCH JUDGE RESULT: Selected REFINED for variant {original.variant_id}"
+                )
                 if refined.pdf_path:
                     logger.info(f"│ 📄 Winning file: {refined.pdf_path.name}")
                 else:
@@ -858,7 +952,7 @@ class PDFStyleCoordinator:
                 f"    ⚠️  Variant {original.variant_id}: Branch comparison failed: {e}"
             )
             logger.warning(
-                f"    Defaulting to REFINED version (attempted to fix critical issues)"
+                "    Defaulting to REFINED version (attempted to fix critical issues)"
             )
             refined.version = "refined"
             return refined
@@ -931,9 +1025,13 @@ Focus specifically on:
                 )
                 return variant  # Return original
 
-            # Save refined LaTeX with organized naming
-            refined_tex_path = (
-                output_dir / f"iter{iteration}_var{variant.variant_id}_refined.tex"
+            # Save refined LaTeX with organized naming using version system
+            base_refined_tex_path = (
+                output_dir / f"iter{iteration}_var{variant.variant_id}.tex"
+            )
+            next_version = get_next_version_number(base_refined_tex_path)
+            refined_tex_path = create_versioned_file(
+                base_refined_tex_path, next_version
             )
             refined_tex_path.write_text(
                 formatting_output.improved_latex_content, encoding="utf-8"
@@ -941,10 +1039,14 @@ Focus specifically on:
 
             # Compile refined variant
             if latex_expert:
-                logger.info(f"    Compiling refined variant {variant.variant_id}...")
-                refined_pdf_path = (
-                    output_dir
-                    / f"iter{iteration}_var{variant.variant_id}_refined.pdf"
+                logger.info(
+                    f"    Compiling refined variant {variant.variant_id} (v{next_version})..."
+                )
+                base_refined_pdf_path = (
+                    output_dir / f"iter{iteration}_var{variant.variant_id}.pdf"
+                )
+                refined_pdf_path = create_versioned_file(
+                    base_refined_pdf_path, next_version
                 )
 
                 from ..compilation.models import LaTeXEngine
@@ -960,11 +1062,43 @@ Focus specifically on:
                     logger.info(
                         f"    ✅ Variant {variant.variant_id} refined successfully"
                     )
-                    # Create refined variant result
+
+                    # Use final file paths from LaTeX expert (may be timestamped versions from error fixing)
+                    final_refined_tex_path = (
+                        compile_result.final_tex_path or refined_tex_path
+                    )
+                    final_refined_pdf_path = (
+                        compile_result.final_pdf_path or refined_pdf_path
+                    )
+
+                    if final_refined_tex_path != refined_tex_path:
+                        # Extract version number from filename
+                        version_match = re.search(
+                            r"_ver(\d+)", final_refined_tex_path.name
+                        )
+                        version_info = (
+                            f" (v{version_match.group(1)})" if version_match else ""
+                        )
+                        logger.info(
+                            f"    📄 Using versioned refined TEX: {final_refined_tex_path.name}{version_info}"
+                        )
+                    if final_refined_pdf_path != refined_pdf_path:
+                        # Extract version number from filename
+                        version_match = re.search(
+                            r"_ver(\d+)", final_refined_pdf_path.name
+                        )
+                        version_info = (
+                            f" (v{version_match.group(1)})" if version_match else ""
+                        )
+                        logger.info(
+                            f"    📄 Using versioned refined PDF: {final_refined_pdf_path.name}{version_info}"
+                        )
+
+                    # Create refined variant result with final paths
                     refined_variant = VariantResult(
                         variant_id=variant.variant_id,
-                        pdf_path=refined_pdf_path,
-                        tex_path=refined_tex_path,
+                        pdf_path=final_refined_pdf_path,
+                        tex_path=final_refined_tex_path,
                         compilation_time=compile_result.compilation_time,
                         validation=validation,
                         version="refined",
@@ -1108,7 +1242,7 @@ Focus specifically on:
 
         # Log summary
         logger.info("")
-        logger.info(f"  Validation Summary:")
+        logger.info("  Validation Summary:")
         logger.info(f"    Variants validated: {len(variants)}")
         logger.info(f"    Variants with critical issues: {variants_with_issues}")
         logger.info(f"    Variants refined: {variants_refined}")
