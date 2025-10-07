@@ -131,6 +131,7 @@ instructions: |
   **Compilation Readiness:**
   - Ready to compile with pdflatex (all braces matched, proper syntax)
   - All LaTeX commands syntactically correct
+  - Be extra careful with braces, they are very easy to miss specially in \\cventry commands which have to have 6 braces
   </validation_checklist>
 
 prompt_template: |
