@@ -37,7 +37,7 @@ instructions: |
   <quality_criteria>
   Weighted by importance (total must equal 100%):
 
-  1. **Design Coherence (30%)**  [NEW - Most Important]
+  1. **Design Coherence (30%)**
      Objective: Does the document exhibit a unified, intentional design system?
 
      Quantitative Scoring (0.0-1.0):
@@ -324,14 +324,15 @@ prompt_templates:
 
     <output_format>
     Provide structured comparison results:
-    - best_variant_id: ID of selected variant
+    - best_variant_id: ID of selected variant (1, 2, 3, etc.)
+    - best_variant_version: Version of selected variant ("original", "refined", etc.) - IMPORTANT: extract this from the variant label shown above (e.g., "Variant 2 (refined)" → "refined")
     - score: "pass" or "needs_improvement" or "fail" (for best variant)
     - quality_metrics: Scores for the best variant
     - all_variant_scores: Detailed scores for all variants
     - comparison_summary: Explanation of selection with trade-offs
 
     Example comparison_summary:
-    "Selected Variant 2 as it achieves the best balance across all criteria. While Variant 1 had slightly better spacing optimization (0.85 vs 0.82), Variant 2 excelled in consistency (0.88 vs 0.75) and readability (0.85 vs 0.78), resulting in a higher weighted score. Variant 3's aggressive spacing reduction compromised readability too much (0.62). The main remaining issue is [specific issue], which should be addressed in the next iteration."
+    "Selected Variant 2 (refined) as it achieves the best balance across all criteria. While Variant 1 (original) had slightly better spacing optimization (0.85 vs 0.82), Variant 2 (refined) excelled in consistency (0.88 vs 0.75) and readability (0.85 vs 0.78), resulting in a higher weighted score. Variant 3 (original)'s aggressive spacing reduction compromised readability too much (0.62). The main remaining issue is [specific issue], which should be addressed in the next iteration."
 
     Example feedback:
     - "Good progress on spacing - now focus on label redundancy in Technical Skills section"

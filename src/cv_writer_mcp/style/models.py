@@ -146,6 +146,9 @@ class VariantEvaluationOutput(BaseModel):
     best_variant_id: int = Field(
         ..., description="ID of the best variant among all evaluated (1, 2, 3, etc.)"
     )
+    best_variant_version: str = Field(
+        ..., description="Version of the best variant: 'original', 'refined', etc."
+    )
     score: Literal["pass", "needs_improvement", "fail"] = Field(
         ..., description="Quality score for the best variant based on overall weighted score"
     )
@@ -158,7 +161,7 @@ class VariantEvaluationOutput(BaseModel):
     )
     comparison_summary: str = Field(
         ...,
-        description="Scientific explanation of selection: compare variants quantitatively, explain trade-offs, show weighted score calculation, justify winner",
+        description="Scientific explanation of selection: compare variants quantitatively, explain trade-offs, show weighted score calculation, justify winner. MUST explicitly state which version was selected (e.g., 'variant2_refined')",
     )
     all_variant_scores: dict[int, dict[str, float]] = Field(
         ...,
@@ -210,6 +213,12 @@ class VariantResult(BaseModel):
     )
     validation: VariantValidation | None = Field(
         None, description="Validation result if visual validation was performed"
+    )
+    version: str = Field(
+        "original", description="Version label: 'original', 'refined', 'refined_v2', etc."
+    )
+    parent_variant: "VariantResult | None" = Field(
+        None, description="Reference to parent variant (for tracking refinement lineage)"
     )
 
 

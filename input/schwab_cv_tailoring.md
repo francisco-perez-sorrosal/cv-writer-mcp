@@ -92,7 +92,7 @@ Method and system for webpage classification and content delivery (USPTO App. 18
 
 Professional Engagement
 
-Conferences: Speaker at NeurIPS, ICML, MLSys, SIGKDD.
+Conferences: NeurIPS, ICML, MLSys, SIGKDD.
 
 Community: Apache Committer, Open-source project maintainer (mdbook-bib).
 

@@ -71,7 +71,12 @@ class StyleQualityAgent:
             SingleVariantEvaluationOutput with score, feedback, and metrics
         """
         try:
-            logger.info("📊 Judge evaluating single variant")
+            logger.info("")
+            logger.info("─" * 70)
+            logger.info("⚖️  QUALITY JUDGE: Evaluating single variant")
+            logger.info(f"📄 Original PDF: {original_pdf_path.name}")
+            logger.info(f"📄 Improved PDF: {improved_pdf_path.name}")
+            logger.info("─" * 70)
 
             agent = self._create_agent("SingleVariantEvaluationOutput")
 
@@ -97,10 +102,10 @@ class StyleQualityAgent:
                 score="needs_improvement",
                 feedback=f"Evaluation failed: {str(e)}. Please review manually.",
                 quality_metrics={
+                    "design_coherence": 0.5,
                     "spacing": 0.5,
                     "consistency": 0.5,
                     "readability": 0.5,
-                    "layout": 0.5,
                 },
             )
 
@@ -123,14 +128,30 @@ class StyleQualityAgent:
             VariantEvaluationOutput with best variant ID, score, comparison, and metrics
         """
         try:
-            logger.info(f"⚖️  Judge comparing {len(variant_pdfs)} variants")
+            logger.info("")
+            logger.info("─" * 70)
+            logger.info(f"⚖️  QUALITY JUDGE: Comparing {len(variant_pdfs)} variants")
+            logger.info(f"📄 Original PDF: {original_pdf_path.name}")
+            logger.info("📊 Variants being compared:")
+            
+            # Build variant info string with version labels and clear file names
+            # Handle both 2-tuple (vid, path) and 3-tuple (vid, path, version) formats
+            variant_info_lines: list[str] = []
+            for item in variant_pdfs:
+                if len(item) == 3:
+                    vid, path, version = item  # type: ignore
+                    variant_info_lines.append(
+                        f"  Variant {vid} ({version}): {path.name}"
+                    )
+                    logger.info(f"  📄 Variant {vid} ({version}): {path.name}")
+                else:
+                    vid, path = item  # type: ignore
+                    variant_info_lines.append(f"  Variant {vid}: {path.name}")
+                    logger.info(f"  📄 Variant {vid}: {path.name}")
+            variant_info = "\n".join(variant_info_lines)
+            logger.info("─" * 70)
 
             agent = self._create_agent("VariantEvaluationOutput")
-
-            # Build variant info string
-            variant_info = "\n".join(
-                f"  Variant {vid}: {path.absolute()}" for vid, path in variant_pdfs
-            )
 
             # Build prompt from template
             prompt = self.agent_config["prompt_templates"]["multi_variant"].format(
@@ -157,21 +178,22 @@ class StyleQualityAgent:
 
             return VariantEvaluationOutput(
                 best_variant_id=first_variant_id,
+                best_variant_version="original",  # Default to original version
                 score="needs_improvement",
                 feedback=f"Evaluation failed: {str(e)}. Defaulting to first variant.",
                 quality_metrics={
+                    "design_coherence": 0.5,
                     "spacing": 0.5,
                     "consistency": 0.5,
                     "readability": 0.5,
-                    "layout": 0.5,
                 },
                 comparison_summary=f"Evaluation error occurred. Selected variant {first_variant_id} by default.",
                 all_variant_scores={
                     vid: {
+                        "design_coherence": 0.5,
                         "spacing": 0.5,
                         "consistency": 0.5,
                         "readability": 0.5,
-                        "layout": 0.5,
                     }
                     for vid, _ in variant_pdfs
                 },

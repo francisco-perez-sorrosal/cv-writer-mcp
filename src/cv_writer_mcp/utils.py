@@ -48,6 +48,48 @@ def create_timestamped_version(tex_file_path: Path) -> Path:
         return tex_file_path  # Return original path if backup fails
 
 
+def create_organized_backup(tex_file_path: Path, backup_type: str = "backup") -> Path:
+    """Create an organized backup version with clear naming.
+
+    Args:
+        tex_file_path: Path to the original .tex file
+        backup_type: Type of backup (e.g., "backup", "before_fix", "after_fix")
+
+    Returns:
+        Path to the backup file, or original path if backup fails
+    """
+    # Generate formatted timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Extract the original filename stem (remove any existing timestamps or backup patterns)
+    original_stem = tex_file_path.stem
+    # Remove any existing timestamp pattern (_YYYYMMDD_HHMMSS)
+    original_stem = re.sub(r"_\d{8}_\d{6}$", "", original_stem)
+    # Remove any existing backup patterns (_backup, _before_fix, etc.)
+    original_stem = re.sub(r"_(backup|before_fix|after_fix|refined)$", "", original_stem)
+
+    suffix = tex_file_path.suffix
+    new_filename = f"{original_stem}_{backup_type}_{timestamp}{suffix}"
+
+    # Create new path in the same directory
+    backup_path = tex_file_path.parent / new_filename
+
+    try:
+        # Copy the current content to the new backup file
+        with open(tex_file_path, encoding="utf-8") as source:
+            content = source.read()
+
+        with open(backup_path, "w", encoding="utf-8") as target:
+            target.write(content)
+
+        logger.info(f"Created organized backup: {backup_path.name}")
+        return backup_path
+
+    except Exception as e:
+        logger.error(f"Failed to create organized backup: {str(e)}")
+        return tex_file_path  # Return original path if backup fails
+
+
 def read_text_file(
     file_path: Path, description: str = "file", expected_extension: str | None = None
 ) -> str:

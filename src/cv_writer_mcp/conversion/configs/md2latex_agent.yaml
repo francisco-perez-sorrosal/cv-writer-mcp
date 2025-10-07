@@ -34,17 +34,17 @@ instructions: |
 
   <structure_guidelines>
   1. PREAMBLE: Copy the entire preamble from <template_preamble_source> (everything before \\begin{{document}})
-     - Includes: \\documentclass, \\moderncvtheme, all \\usepackage commands, all \\renewcommand definitions, all \\makeatletter sections, all \\setlist/\\setlength customizations
+     - Includes: \\documentclass, \\moderncvstyle, \\moderncvcolor, \\usepackage commands, all \\renewcommand definitions, all \\makeatletter sections, all \\setlist/\\setlength customizations
      - DO NOT modify or simplify - copy EXACTLY as written
 
   2. PERSONAL DATA: Replace template placeholders with values from <personal_information>
-     - \\firstname{{}}/\\familyname{{}} from name/family_name
+     - \\name{{}}{{}} from name/family_name
      - \\title{{}} from job_title
-     - \\address{{}}{{}}, \\mobile{{}}, \\email{{}} from corresponding fields
+     - \\address{{}}{{}}, \\phone[mobile]{{}}, \\email{{}} from corresponding fields
      - \\social[linkedin]{{}}, \\social[github]{{}} from linkedin/github
      - \\extrainfo{{}} for full_cv_url, \\quote{{}} from quote field
 
-  3. DOCUMENT BODY: After personal data, add \\begin{{document}}, \\maketitle, then convert markdown content
+  3. DOCUMENT BODY: After personal data, add \\begin{{document}}, \\makecvtitle, then convert markdown content
      - Use moderncv commands: \\cventry, \\cvitem, \\cvlistitem, etc.
   </structure_guidelines>
 

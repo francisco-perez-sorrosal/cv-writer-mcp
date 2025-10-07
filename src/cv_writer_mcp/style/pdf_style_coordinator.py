@@ -250,12 +250,17 @@ class PDFStyleCoordinator:
             best_result = eval_result.best_variant
             iteration_feedback = eval_result.feedback
 
-            logger.info(f"🏆 Best variant: {eval_result.best_variant_id}")
+            logger.info(
+                f"🏆 Best variant: {eval_result.best_variant_id} ({best_result.version})"
+            )
             logger.info(f"📊 Judge score: {eval_result.score}")
 
             # Display quality metrics
             if eval_result.quality_metrics:
-                logger.info(f"📈 Quality Metrics (Best Variant {eval_result.best_variant_id}):")
+                best_version = eval_result.best_variant.version
+                logger.info(
+                    f"📈 Quality Metrics (Best Variant {eval_result.best_variant_id} - {best_version}):"
+                )
                 for metric, score in eval_result.quality_metrics.items():
                     logger.info(f"     {metric}: {score:.2f}")
 
@@ -315,7 +320,9 @@ class PDFStyleCoordinator:
             logger.info("=" * 70)
             logger.info("🎉 STYLE IMPROVEMENT COMPLETED")
             logger.info(f"   Iterations: {diagnostics.iterations_completed}")
-            logger.info(f"   Best variant: {best_result.variant_id}")
+            logger.info(
+                f"   Best variant: {best_result.variant_id} ({best_result.version})"
+            )
             logger.info(f"   Final PDF: {best_result.pdf_path.name}")
             logger.info(f"   Final TEX: {best_result.tex_path.name}")
             logger.info("=" * 70)
@@ -428,8 +435,8 @@ class PDFStyleCoordinator:
                 logger.error(f"  Variant {variant_id}: ❌ Formatting failed")
                 return None
 
-            # Save variant LaTeX
-            variant_tex_path = output_dir / f"iter{iteration}_variant{variant_id}.tex"
+            # Save variant LaTeX with organized naming
+            variant_tex_path = output_dir / f"i{iteration}v{variant_id}.tex"
             variant_tex_path.write_text(
                 formatting_output.improved_latex_content, encoding="utf-8"
             )
@@ -440,7 +447,7 @@ class PDFStyleCoordinator:
                     f"  Variant {variant_id}: Compiling (up to {max_compile_attempts} attempts)..."
                 )
                 variant_pdf_path = (
-                    output_dir / f"iter{iteration}_variant{variant_id}.pdf"
+                    output_dir / f"i{iteration}v{variant_id}.pdf"
                 )
 
                 # Import LaTeXEngine here to avoid circular imports
@@ -507,8 +514,19 @@ class PDFStyleCoordinator:
 
         if num_variants >= 2 and len(successful_variants) >= 2:
             # Multi-variant evaluation
-            logger.info(f"  ⚖️  Judge comparing {len(successful_variants)} variants...")
-            variant_pdfs = [(v.variant_id, v.pdf_path) for v in successful_variants]
+            logger.info("")
+            logger.info("─" * 70)
+            logger.info(f"⚖️  MAIN JUDGE: Comparing {len(successful_variants)} variants (Iteration {iteration})")
+            logger.info(f"📄 Original PDF: {original_pdf.name}")
+            logger.info("📊 Variants to compare:")
+            for v in successful_variants:
+                logger.info(f"  📄 Variant {v.variant_id} ({v.version}): {v.pdf_path.name}")
+            logger.info("─" * 70)
+            
+            # Include version information in variant tuples: (id, path, version)
+            variant_pdfs = [
+                (v.variant_id, v.pdf_path, v.version) for v in successful_variants
+            ]
 
             judge_output = await self.quality_agent.evaluate_variants(
                 original_pdf_path=original_pdf,
@@ -523,6 +541,13 @@ class PDFStyleCoordinator:
                 if v.variant_id == judge_output.best_variant_id
             )
 
+            logger.info("")
+            logger.info("─" * 70)
+            logger.info(f"🏆 MAIN JUDGE RESULT: Selected Variant {best.variant_id} ({best.version})")
+            logger.info(f"📄 Winning file: {best.pdf_path.name}")
+            logger.info(f"📊 Score: {judge_output.score}")
+            logger.info("─" * 70)
+
             return EvaluationResult(
                 best_variant_id=judge_output.best_variant_id,
                 best_variant=best,
@@ -534,14 +559,26 @@ class PDFStyleCoordinator:
             )
         else:
             # Single variant evaluation
-            logger.info("  📊 Judge evaluating single variant...")
             best = successful_variants[0]
+            logger.info("")
+            logger.info("─" * 70)
+            logger.info(f"⚖️  SINGLE VARIANT JUDGE: Evaluating variant {best.variant_id} (Iteration {iteration})")
+            logger.info(f"📄 Original PDF: {original_pdf.name}")
+            logger.info(f"📄 Improved PDF: {best.pdf_path.name}")
+            logger.info("─" * 70)
 
             single_judge_output = await self.quality_agent.evaluate_single_variant(
                 original_pdf_path=original_pdf,
                 improved_pdf_path=best.pdf_path,
                 improvement_goals=improvement_goals,
             )
+
+            logger.info("")
+            logger.info("─" * 70)
+            logger.info(f"🏆 SINGLE VARIANT JUDGE RESULT: Evaluated Variant {best.variant_id}")
+            logger.info(f"📄 File: {best.pdf_path.name}")
+            logger.info(f"📊 Score: {single_judge_output.score}")
+            logger.info("─" * 70)
 
             return EvaluationResult(
                 best_variant_id=best.variant_id,
@@ -663,6 +700,85 @@ class PDFStyleCoordinator:
         # Jaccard similarity: intersection over union
         return len(words1 & words2) / len(words1 | words2)
 
+    async def _compare_variant_versions(
+        self,
+        original: VariantResult,
+        refined: VariantResult,
+        improvement_goals: list[str],
+    ) -> VariantResult:
+        """Compare original vs refined variant and return the better one.
+
+        Uses the quality agent to determine which version is objectively better.
+        The key question: did refinement fix critical issues without degrading
+        overall quality?
+
+        Args:
+            original: Original variant
+            refined: Refined variant (after fixing critical issues)
+            improvement_goals: List of issues the refinement was targeting
+
+        Returns:
+            The better variant (either original or refined) with version label set
+        """
+        logger.info("")
+        logger.info("─" * 50)
+        logger.info(f"🔍 BRANCH JUDGE: Comparing variant {original.variant_id}")
+        logger.info(f"📄 Original: {original.pdf_path.name}")
+        logger.info(f"📄 Refined:  {refined.pdf_path.name}")
+        logger.info("─" * 50)
+
+        try:
+            # Use temporary IDs for comparison: 1=original, 2=refined
+            # This allows the judge to clearly distinguish between versions
+            variant_pdfs = [
+                (1, original.pdf_path),  # Version 1 = original
+                (2, refined.pdf_path),   # Version 2 = refined
+            ]
+
+            # Use quality agent to compare the two versions
+            evaluation = await self.quality_agent.evaluate_variants(
+                original_pdf_path=original.pdf_path,  # Use original as baseline
+                variant_pdfs=variant_pdfs,
+                improvement_goals=improvement_goals,
+                iteration_number=0,  # Branch comparison, not iteration-level
+            )
+
+            # Determine winner based on selected temporary ID
+            if evaluation.best_variant_id == 1:
+                # Judge selected version 1 (original)
+                winner = original
+                winner.version = "original"
+                logger.info("")
+                logger.info("─" * 50)
+                logger.info(f"🏆 BRANCH JUDGE RESULT: Selected ORIGINAL for variant {original.variant_id}")
+                logger.info(f"📄 Winning file: {original.pdf_path.name}")
+                logger.info(f"📊 Score: {evaluation.score}")
+                logger.info("💡 Refinement did not improve quality")
+                logger.info("─" * 50)
+            else:
+                # Judge selected version 2 (refined)
+                winner = refined
+                winner.version = "refined"
+                logger.info("")
+                logger.info("─" * 50)
+                logger.info(f"🏆 BRANCH JUDGE RESULT: Selected REFINED for variant {original.variant_id}")
+                logger.info(f"📄 Winning file: {refined.pdf_path.name}")
+                logger.info(f"📊 Score: {evaluation.score}")
+                logger.info("💡 Refinement successfully improved quality")
+                logger.info("─" * 50)
+
+            return winner
+
+        except Exception as e:
+            logger.warning(
+                f"    ⚠️  Variant {original.variant_id}: Branch comparison failed: {e}"
+            )
+            logger.warning(
+                f"    Defaulting to REFINED version (attempted to fix critical issues)"
+            )
+            refined.version = "refined"
+            return refined
+
     async def _refine_variant(
         self,
         variant: VariantResult,
@@ -731,9 +847,9 @@ Focus specifically on:
                 )
                 return variant  # Return original
 
-            # Save refined LaTeX
+            # Save refined LaTeX with organized naming
             refined_tex_path = (
-                output_dir / f"iter{iteration}_variant{variant.variant_id}_refined.tex"
+                output_dir / f"i{iteration}v{variant.variant_id}r.tex"
             )
             refined_tex_path.write_text(
                 formatting_output.improved_latex_content, encoding="utf-8"
@@ -744,7 +860,7 @@ Focus specifically on:
                 logger.info(f"    Compiling refined variant {variant.variant_id}...")
                 refined_pdf_path = (
                     output_dir
-                    / f"iter{iteration}_variant{variant.variant_id}_refined.pdf"
+                    / f"i{iteration}v{variant.variant_id}r.pdf"
                 )
 
                 from ..compilation.models import LaTeXEngine
@@ -874,14 +990,29 @@ Focus specifically on:
                             f"  ✅ Variant {variant.variant_id} successfully refined"
                         )
 
-                    refined_variant.validation = validation
-                    refined_variants.append(refined_variant)
+                    # NEW: Branch-level comparison between original and refined
+                    # Use quality agent to determine which version is actually better
+                    improvement_goals = (
+                        validation.critical_issues if validation.critical_issues else []
+                    )
+                    best_version = await self._compare_variant_versions(
+                        original=variant,
+                        refined=refined_variant,
+                        improvement_goals=improvement_goals,
+                    )
+
+                    # Use the winning version
+                    best_version.validation = validation
+                    refined_variants.append(best_version)
                 else:
-                    # Refinement disabled - just attach validation
+                    # Refinement disabled - just attach validation and mark as original
+                    variant.version = "original"
                     variant.validation = validation
                     refined_variants.append(variant)
             else:
+                # No critical issues - keep original version
                 logger.info(f"  ✅ Variant {variant.variant_id} passed validation")
+                variant.version = "original"
                 variant.validation = validation
                 refined_variants.append(variant)
 

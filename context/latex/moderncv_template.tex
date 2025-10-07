@@ -12,10 +12,10 @@
 
 \documentclass[11pt,a4paper,english, sans]{moderncv}      % a4paper, a5paper, b5paper, letterpaper, legalpaper, executivepaper, landscape
                                                           % 10pt, 11pt, 12pt, english, sans
-% moderncv themes
-%\moderncvtheme[green]{casual}              % optional argument are 'blue' (default), 'orange', 'red', 'green', 'grey' and 'roman' (for roman fonts, instead of sans serif fonts)
-                                            % casual (default), classic, banking, oldstyle, fancy
-\moderncvtheme[blue]{classic}
+
+% moderncv setup
+\moderncvcolor{blue}
+\moderncvstyle{classic}
 
 % adjust the page margins
 \usepackage[scale=0.8]{geometry}
@@ -32,6 +32,7 @@
 
 % additional packages for safety
 \usepackage{enumitem}
+\usepackage{ifthen}
 
 %------------- PACKAGES --------------------------------------------
 
@@ -39,11 +40,10 @@
 %------------- PERSONAL DATA --------------------------------------------
 
 % keep personal data as it is!
-\firstname{\Huge <name>}
-\familyname{\Huge <family_name>}
+\name{\Huge <name>}{\Huge <family_name>}
 \title{<job_title>}
 \address{<address>}{<city> <state> <country>}
-\mobile{<mobile>}
+\phone[mobile]{<mobile>}
 \email{<email>}
 \extrainfo{\homepagesymbol ~\href{<full_cv_url>}{Full CV}}      % optional, remove the line if not wanted
 \social[linkedin]{<linkedin>}
@@ -104,7 +104,7 @@
 
 \begin{document}
 
-\maketitle
+\makecvtitle
 \vspace{-0.5cm}
 
 %------------- PROFILE AND GOALS --------------------------------------------
