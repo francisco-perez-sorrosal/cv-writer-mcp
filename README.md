@@ -19,10 +19,16 @@ An AI-powered Model Context Protocol (MCP) server that generates professional CV
 - **Enhanced Logging**: Clear file identification in judge comparisons
 
 ### MCP Integration
-- **Primary Tools**: `generate_cv_from_markdown`, `compile_and_improve_style`
+- **Primary Tools**: `md_to_latex`, `compile_and_improve_style`
 - **Debug Tools**: Individual phase tools for testing
 - **Transport Flexibility**: stdio (Claude Desktop) and HTTP support
 - **Resource Serving**: PDFs and LaTeX files via MCP resources
+
+### MCPB Bundle Support
+- **Portable Distribution**: Bundle server + dependencies into single .mcpb file
+- **Easy Installation**: Drag-and-drop installation in Claude Desktop
+- **Self-Contained**: All Python dependencies bundled in lib/ directory
+- **Automated Build**: Makefile and pixi tasks with `uv` for fast bundling
 
 ## 📦 Installation
 
@@ -47,6 +53,37 @@ export OPENAI_API_KEY="your-api-key-here"
 
 # Verify installation
 pixi run check-latex
+```
+
+## 📦 MCPB Bundle Installation (Recommended)
+
+For the easiest installation experience:
+
+1. Download `cv-writer-mcp.mcpb` from releases
+2. Open Claude Desktop settings
+3. Go to "MCP Servers" tab
+4. Click "Install from file"
+5. Select `cv-writer-mcp.mcpb`
+6. Set `OPENAI_API_KEY` in environment variables
+
+That's it! The server is ready to use.
+
+### Building Your Own Bundle
+
+Requires `uv` to be installed (ultra-fast Python package manager):
+
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Build complete MCPB bundle
+make build-mcpb
+
+# Or use individual steps
+pixi run python-bundle       # Build wheel with uv
+pixi run update-mcpb-deps    # Export dependencies with uv
+pixi run mcp-bundle          # Install to lib/ with uv
+pixi run pack                # Create .mcpb file
 ```
 
 ### Install LaTeX
@@ -159,7 +196,7 @@ pixi run serve
 
 ### Primary MCP Tools
 
-#### `generate_cv_from_markdown` ⭐
+#### `md_to_latex` ⭐
 
 Complete end-to-end pipeline: Markdown → LaTeX → PDF → Style → Final PDF
 

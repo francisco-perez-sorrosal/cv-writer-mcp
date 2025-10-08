@@ -185,7 +185,7 @@ def setup_mcp_server(
     # ========================================================================
 
     @mcp.tool(structured_output=True)
-    async def generate_cv_from_markdown(
+    async def md_to_latex(
         markdown_content: str = Field(..., description="Markdown CV content"),
         output_filename: str | None = Field(None, description="Custom output filename"),
         enable_style_improvement: bool = Field(
@@ -207,7 +207,7 @@ def setup_mcp_server(
     ) -> CVGenerationResponse:
         """Complete CV generation: Markdown → LaTeX → PDF → Style → Final PDF.
 
-        This is the PRIMARY TOOL for end-to-end CV generation.
+        This is the PRIMARY MCP TOOL for end-to-end CV generation.
 
         Smart Defaults (fast & cheap):
         - Single style iteration (max_style_iterations=1)
@@ -255,7 +255,7 @@ def setup_mcp_server(
             return orchestrator.to_response(result)
 
         except Exception as e:
-            logger.error(f"Error in generate_cv_from_markdown: {e}")
+            logger.error(f"Error in md_to_latex: {e}")
             return CVGenerationResponse(
                 status=CompletionStatus.FAILED,
                 pdf_url=None,
@@ -507,7 +507,7 @@ def start_mcps(
     banner_text.append("\n\n", style="default")
     banner_text.append("✨ Convert markdown CV to LaTeX\n", style="green")
     banner_text.append(
-        "🔧 MCP Tools: markdown_to_latex, compile_latex_to_pdf, check_latex_installation, health_check\n",
+        "🔧 MCP Tools: md_to_latex, compile_and_improve_style, markdown_to_latex, compile_latex_to_pdf\n",
         style="yellow",
     )
     banner_text.append(

@@ -16,6 +16,11 @@ lib64/
 parts/
 sdist/
 var/
+
+# MCPB Bundle artifacts
+bundle/
+*.mcpb
+requirements-bundle.txt
 wheels/
 share/python-wheels/
 *.egg-info/

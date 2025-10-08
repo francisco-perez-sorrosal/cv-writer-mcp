@@ -1,0 +1,35 @@
+{
+  "name": "cv-writer-mcp",
+  "version": "0.1.0",
+  "description": "AI-powered CV generation from markdown with intelligent style optimization",
+  "author": "Francisco Perez-Sorrosal <fperezsorrosal@gmail.com>",
+  "license": "MIT",
+  "server": {
+    "command": "python",
+    "args": ["-m", "cv_writer_mcp", "start-mcps"],
+    "env": {
+      "PYTHONPATH": "lib:${PYTHONPATH}"
+    }
+  },
+  "tools": [
+    {
+      "name": "md_to_latex",
+      "description": "Complete CV generation: Markdown → LaTeX → PDF → Style → Final PDF"
+    },
+    {
+      "name": "compile_and_improve_style",
+      "description": "Compile LaTeX and improve styling: LaTeX → PDF → Style → Final PDF"
+    },
+    {
+      "name": "markdown_to_latex",
+      "description": "Convert markdown to LaTeX (debug/test)"
+    },
+    {
+      "name": "compile_latex_to_pdf",
+      "description": "Compile LaTeX to PDF with error fixing (debug/test)"
+    }
+  ],
+  "requirements": {
+    "openai_api_key": "Required for AI agents"
+  }
+}

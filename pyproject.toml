@@ -110,6 +110,42 @@ compile-latex = "python -m cv_writer_mcp compile-latex --debug output/my_cv_schw
 # Phase 3: PDF → Styled LaTeX only (analyze and improve styling)
 fix-style = "python -m cv_writer_mcp fix-style -p output/to_improve_schwab.pdf -t output/to_improve_schwab.tex -o to_improve_schwab_fixed.tex --debug"
 
+# ============================================================================
+# MCPB BUNDLE CREATION (For Distribution)
+# ============================================================================
+
+# Build Python wheel using uv
+python-bundle = "uv build --wheel"
+
+# Export dependencies for bundle using uv
+update-mcpb-deps = "uv pip compile pyproject.toml -o requirements-bundle.txt"
+
+# Install dependencies to lib/ directory using uv
+mcp-bundle = """
+rm -rf bundle/lib &&
+mkdir -p bundle/lib &&
+uv pip install --target bundle/lib -r requirements-bundle.txt
+"""
+
+# Create .mcpb bundle file
+pack = """
+mkdir -p bundle &&
+cp manifest.json bundle/ &&
+cp -r src/cv_writer_mcp bundle/server &&
+cp -r context bundle/context &&
+cd bundle &&
+zip -r ../cv-writer-mcp.mcpb . &&
+cd .. &&
+echo 'Bundle created: cv-writer-mcp.mcpb'
+"""
+
+# Clean bundle artifacts
+clean-bundles = """
+rm -rf bundle/ dist/ build/ *.egg-info &&
+rm -f cv-writer-mcp.mcpb requirements-bundle.txt &&
+echo 'Bundle artifacts cleaned'
+"""
+
 
 [tool.ruff]
 target-version = "py311"
