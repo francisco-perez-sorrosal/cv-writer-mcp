@@ -9,7 +9,7 @@ from agents import Agent, Runner
 from loguru import logger
 
 from ..models import create_agent_from_config
-from ..utils import load_agent_config
+from ..utils import is_error_version, load_agent_config
 from .models import SingleVariantEvaluationOutput, VariantEvaluationOutput
 
 
@@ -74,6 +74,22 @@ class StyleQualityAgent:
             SingleVariantEvaluationOutput with score, feedback, and metrics
         """
         try:
+            # Check if improved PDF is an error version
+            if is_error_version(improved_pdf_path):
+                logger.warning(
+                    f"Improved PDF is error version: {improved_pdf_path.name}"
+                )
+                return SingleVariantEvaluationOutput(
+                    score="needs_improvement",
+                    feedback=f"Improved PDF is an error version ({improved_pdf_path.name}), cannot evaluate quality",
+                    quality_metrics={
+                        "design_coherence": 0.0,
+                        "spacing": 0.0,
+                        "consistency": 0.0,
+                        "readability": 0.0,
+                    },
+                )
+
             logger.info("")
             logger.info("┌" + "─" * 68 + "┐")
             logger.info("│ ⚖️  QUALITY JUDGE: Evaluating single variant")
@@ -138,16 +154,34 @@ class StyleQualityAgent:
             VariantEvaluationOutput with best variant ID, score, comparison, and metrics
         """
         try:
+            # Filter out error versions
+            filtered_variants = [
+                (vid, path) for vid, path in variant_pdfs if not is_error_version(path)
+            ]
+
+            # Log any error versions that were filtered out
+            error_variants = [
+                (vid, path) for vid, path in variant_pdfs if is_error_version(path)
+            ]
+
+            if error_variants:
+                logger.info("")
+                logger.info("⚠️  Filtering out error versions:")
+                for vid, path in error_variants:
+                    logger.info(f"  ❌ Variant {vid}: {path.name}")
+
             logger.info("")
             logger.info("─" * 70)
-            logger.info(f"⚖️  QUALITY JUDGE: Comparing {len(variant_pdfs)} variants")
+            logger.info(
+                f"⚖️  QUALITY JUDGE: Comparing {len(filtered_variants)} variants"
+            )
             logger.info(f"📄 Original PDF: {original_pdf_path.name}")
             logger.info("📊 Variants being compared:")
 
             # Build variant info string with version labels and clear file names
             # Handle both 2-tuple (vid, path) and 3-tuple (vid, path, version) formats
             variant_info_lines: list[str] = []
-            for item in variant_pdfs:
+            for item in filtered_variants:
                 if len(item) == 3:
                     vid, path, version = item  # type: ignore
                     variant_info_lines.append(
@@ -165,7 +199,7 @@ class StyleQualityAgent:
 
             # Build prompt from template (use descriptive names instead of absolute paths)
             prompt = self.agent_config["prompt_templates"]["multi_variant"].format(
-                num_variants=len(variant_pdfs),
+                num_variants=len(filtered_variants),
                 original_pdf_path=original_pdf_path.name,  # Use filename only, not absolute path
                 variant_info=variant_info,
                 improvement_goals="\n".join(f"- {goal}" for goal in improvement_goals),
@@ -188,7 +222,7 @@ class StyleQualityAgent:
             # Fallback: Use simple filename-based evaluation
             # Higher version numbers generally indicate more iterations/refinements
             variant_scores = {}
-            for vid, path in variant_pdfs:
+            for vid, path in filtered_variants:
                 # Extract version number from filename for simple scoring
                 version_match = re.search(r"_ver(\d+)", path.name)
                 version_num = int(version_match.group(1)) if version_match else 1
@@ -219,6 +253,6 @@ class StyleQualityAgent:
                         "consistency": variant_scores[vid],
                         "readability": variant_scores[vid],
                     }
-                    for vid, _ in variant_pdfs
+                    for vid, _ in filtered_variants
                 },
             )

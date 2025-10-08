@@ -8,6 +8,7 @@ from typing import Any
 from loguru import logger
 
 from ..models import CompletionStatus, ServerConfig
+from ..utils import create_error_version
 from .compiler_agent import CompilationAgent
 from .error_agent import CompilationErrorAgent
 from .models import (
@@ -377,8 +378,20 @@ class LaTeXExpert:
                     result = self._create_failure_result(
                         compile_result, "Error fixing failed"
                     )
-                    # Set final file paths even on failure
-                    result.final_tex_path = current_file
+
+                    # Create error version of the failed file
+                    error_file_path = create_error_version(current_file)
+                    if current_file.exists():
+                        # Copy the failed file to error version
+                        error_file_path.write_text(
+                            current_file.read_text(encoding="utf-8"), encoding="utf-8"
+                        )
+                        logger.info(f"📄 Created error version: {error_file_path.name}")
+
+                    # Set final file paths to error versions
+                    result.final_tex_path = error_file_path
+                    result.final_pdf_path = None  # No PDF for error versions
+
                     logger.error(f"❌ Orchestration failed: {result.message}")
                     logger.info(str(self._compilation_diagnostics))
                     return result
@@ -387,8 +400,20 @@ class LaTeXExpert:
         result = self._create_failure_result(
             compile_result, f"Failed after {max_attempts} attempts"
         )
-        # Set final file paths even on failure
-        result.final_tex_path = current_file
+
+        # Create error version of the failed file
+        error_file_path = create_error_version(current_file)
+        if current_file.exists():
+            # Copy the failed file to error version
+            error_file_path.write_text(
+                current_file.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            logger.info(f"📄 Created error version: {error_file_path.name}")
+
+        # Set final file paths to error versions
+        result.final_tex_path = error_file_path
+        result.final_pdf_path = None  # No PDF for error versions
+
         logger.error(f"❌ Orchestration failed: {result.message}")
         logger.info(str(self._compilation_diagnostics))
         return result

@@ -12,7 +12,11 @@ if TYPE_CHECKING:
     from ..compilation.latex_expert import LaTeXExpert
 
 from ..models import CompletionStatus
-from ..utils import create_versioned_file, get_next_version_number
+from ..utils import (
+    create_versioned_file,
+    get_next_version_number,
+    is_error_version,
+)
 from .formatting_agent import FormattingAgent
 from .models import (
     EvaluationResult,
@@ -618,8 +622,12 @@ class PDFStyleCoordinator:
                 all_variant_scores=None,
             )
 
-        # Filter variants with valid PDF paths for quality evaluation
-        variants_with_pdfs = [v for v in successful_variants if v.pdf_path is not None]
+        # Filter variants with valid PDF paths for quality evaluation (exclude error versions)
+        variants_with_pdfs = [
+            v
+            for v in successful_variants
+            if v.pdf_path is not None and not is_error_version(v.pdf_path)
+        ]
 
         if num_variants >= 2 and len(variants_with_pdfs) >= 2:
             # Multi-variant evaluation
@@ -642,6 +650,18 @@ class PDFStyleCoordinator:
                     logger.info(
                         f"│   📄 Variant {v.variant_id} ({v.version}): No PDF available"
                     )
+
+            # Log any error versions that were filtered out
+            error_variants = [
+                v
+                for v in successful_variants
+                if v.pdf_path is not None and is_error_version(v.pdf_path)
+            ]
+            if error_variants:
+                logger.info("│")
+                logger.info("│ ⚠️  Error versions filtered out:")
+                for v in error_variants:
+                    logger.info(f"│   ❌ Variant {v.variant_id}: {v.pdf_path.name}")
             logger.info("└" + "─" * 78 + "┘")
 
             # Prepare variant PDFs for comparison: (id, path) tuples
@@ -897,6 +917,18 @@ class PDFStyleCoordinator:
             # Only proceed if both variants have PDFs
             if not original.pdf_path or not refined.pdf_path:
                 logger.warning("Cannot compare variants without PDFs")
+                return original
+
+            # Skip comparison if either variant is an error version
+            if is_error_version(original.pdf_path):
+                logger.warning(
+                    f"Original variant is error version, using refined: {refined.pdf_path.name}"
+                )
+                return refined
+            if is_error_version(refined.pdf_path):
+                logger.warning(
+                    f"Refined variant is error version, using original: {original.pdf_path.name}"
+                )
                 return original
 
             # Use temporary IDs for comparison: 1=original, 2=refined

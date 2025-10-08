@@ -108,6 +108,58 @@ def get_next_version_number(base_path: Path) -> int:
     return max(existing_versions, default=0) + 1
 
 
+def create_error_version(base_path: Path) -> Path:
+    """Create an error version of a file with the pattern: base_name_error.ext
+
+    Args:
+        base_path: Base file path (e.g., iter1_var1_ver1.tex)
+
+    Returns:
+        Path to the error version (e.g., iter1_var1_ver1_error.tex)
+    """
+    # Extract base name without any existing error patterns
+    base_stem = base_path.stem
+
+    # Remove any existing error patterns (_error)
+    base_stem = re.sub(r"_error$", "", base_stem)
+
+    suffix = base_path.suffix
+    new_filename = f"{base_stem}_error{suffix}"
+
+    return base_path.parent / new_filename
+
+
+def is_error_version(file_path: Path) -> bool:
+    """Check if a file path represents an error version.
+
+    Args:
+        file_path: File path to check
+
+    Returns:
+        True if the file is an error version, False otherwise
+    """
+    return file_path.stem.endswith("_error")
+
+
+def get_non_error_versions(directory: Path, base_pattern: str) -> list[Path]:
+    """Get all non-error versions of files matching a base pattern.
+
+    Args:
+        directory: Directory to search in
+        base_pattern: Base pattern to match (e.g., "iter1_var1")
+
+    Returns:
+        List of non-error file paths
+    """
+    pattern = f"{base_pattern}*"
+    all_files = list(directory.glob(pattern))
+
+    # Filter out error versions
+    non_error_files = [f for f in all_files if not is_error_version(f)]
+
+    return non_error_files
+
+
 def create_organized_backup(tex_file_path: Path, backup_type: str = "backup") -> Path:
     """Create an organized backup version with clear naming.
 

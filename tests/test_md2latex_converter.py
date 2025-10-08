@@ -46,7 +46,6 @@ class TestMD2LaTeXAgent:
             # Mock file reading
             mock_read_file.return_value = "test content"
 
-
             agent = MD2LaTeXAgent(api_key="test-key")
 
             assert agent.api_key == "test-key"
@@ -88,7 +87,6 @@ class TestMD2LaTeXAgent:
 
             # Mock file reading
             mock_read_file.return_value = "test content"
-
 
             # Mock runner result
             mock_result = MagicMock()
@@ -141,7 +139,6 @@ class TestMD2LaTeXAgent:
             # Mock file reading
             mock_read_file.return_value = "test content"
 
-
             # Mock runner result with empty content
             mock_result = MagicMock()
             mock_result.final_output = MagicMock()
@@ -192,7 +189,6 @@ class TestMD2LaTeXAgent:
 
             # Mock file reading
             mock_read_file.return_value = "test content"
-
 
             # Mock runner to raise exception
             mock_runner.run = AsyncMock(side_effect=Exception("Test error"))
