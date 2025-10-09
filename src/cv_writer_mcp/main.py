@@ -332,12 +332,12 @@ def setup_mcp_server(
     # DEBUG/TEST MCP TOOLS (Individual Phases)
     # ========================================================================
 
-    # MCP Tools
+    # Phase 1: Markdown → LaTeX
     @mcp.tool(structured_output=True)
-    async def markdown_to_latex(
+    async def p1_markdown_to_latex(
         markdown_content: str, output_filename: str | None = None
     ) -> MarkdownToLaTeXResponse:
-        """Convert markdown CV content to LaTeX file using OpenAI agent.
+        """[Phase 1] Convert markdown CV content to LaTeX file using OpenAI agent.
 
         Args:
             markdown_content: Markdown content of the CV
@@ -371,8 +371,9 @@ def setup_mcp_server(
                 message=f"Error processing markdown to LaTeX conversion request: {str(e)}",
             )
 
+    # Phase 2: LaTeX → PDF
     @mcp.tool(structured_output=True)
-    async def compile_latex_to_pdf(
+    async def p2_compile_latex_to_pdf(
         tex_filename: str = Field(..., description="Name of the .tex file to compile"),
         output_filename: str = Field(
             "", description="Custom output filename for PDF (optional)"
@@ -380,8 +381,9 @@ def setup_mcp_server(
         latex_engine: LaTeXEngine = Field(
             LaTeXEngine.PDFLATEX, description="LaTeX engine to use"
         ),
+        max_compile_attempts: int = Field(3, description="Max compilation attempts"),
     ) -> CompileLaTeXResponse:
-        """Compile LaTeX file to PDF using intelligent agents.
+        """[Phase 2] Compile LaTeX file to PDF using intelligent agents.
 
         Args:
             tex_filename: Name of the .tex file to compile
@@ -403,7 +405,7 @@ def setup_mcp_server(
             tex_filename=tex_filename,
             output_filename=output_filename,
             latex_engine=latex_engine,
-            max_attempts=3,
+            max_attempts=max_compile_attempts,
             user_instructions="",
         )
 
@@ -812,6 +814,9 @@ def fix_style(
 
         console.print("[blue]🔍 Starting PDF analysis and LaTeX improvement...[/blue]")
 
+        # Get output directory from environment variable
+        output_dir = Path(os.getenv("OUTPUT_DIR", "./output"))
+
         # Call improve_with_variants directly (no compilation mode)
         result = loop.run_until_complete(
             coordinator.improve_with_variants(
@@ -822,7 +827,7 @@ def fix_style(
                 num_variants=1,  # Single variant
                 max_compile_attempts=0,  # Not used
                 enable_quality_validation=False,  # No judge without compilation
-                output_dir=Path("./output"),
+                output_dir=output_dir,
             )
         )
 
@@ -834,7 +839,7 @@ def fix_style(
                     if output_file.endswith(".tex")
                     else f"{output_file}.tex"
                 )
-                final_path = Path("./output") / output_filename
+                final_path = output_dir / output_filename
                 final_path.parent.mkdir(parents=True, exist_ok=True)
 
                 if result.best_variant_tex_path:

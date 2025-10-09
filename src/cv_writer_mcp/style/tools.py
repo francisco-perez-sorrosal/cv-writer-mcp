@@ -1,6 +1,7 @@
 """Style package tools."""
 
 import json
+import os
 import time
 from pathlib import Path
 
@@ -27,8 +28,8 @@ async def capture_pdf_screenshots(pdf_file_path: str) -> str:
 
         screenshot_paths = []
 
-        # Create output directory
-        output_dir = Path("./output")
+        # Create output directory from environment variable
+        output_dir = Path(os.getenv("OUTPUT_DIR", "./output"))
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Use Playwright to capture PDF pages

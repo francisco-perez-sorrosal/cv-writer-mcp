@@ -51,12 +51,20 @@
       "description": "Compile LaTeX and improve styling: LaTeX → PDF → Style → Final PDF"
     },
     {
-      "name": "markdown_to_latex",
-      "description": "Convert markdown to LaTeX (debug/test)"
+      "name": "p1_markdown_to_latex",
+      "description": "[Phase 1] Convert markdown to LaTeX (debug/test)"
     },
     {
-      "name": "compile_latex_to_pdf",
-      "description": "Compile LaTeX to PDF with error fixing (debug/test)"
+      "name": "p2_compile_latex_to_pdf",
+      "description": "[Phase 2] Compile LaTeX to PDF with error fixing (debug/test)"
+    },
+    {
+      "name": "check_latex_installation",
+      "description": "Check if LaTeX is installed and accessible"
+    },
+    {
+      "name": "health_check",
+      "description": "Check the health status of the CV Writer MCP server"
     }
   ]
 }
