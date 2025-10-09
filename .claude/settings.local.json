@@ -11,7 +11,10 @@
       "Bash(pixi list:*)",
       "Bash(tee:*)",
       "Bash(pdflatex:*)",
-      "Bash(/dev/null)"
+      "Bash(/dev/null)",
+      "mcp__serena__list_dir",
+      "mcp__serena__find_symbol",
+      "mcp__serena__replace_symbol_body"
     ],
     "deny": [],
     "ask": []

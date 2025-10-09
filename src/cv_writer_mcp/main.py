@@ -42,7 +42,10 @@ app = typer.Typer(
     help="Converts a markdown CV content to LaTeX and compiles it to PDF",
     rich_markup_mode="rich",
 )
-console = Console()
+
+# IMPORTANT: Use stderr for console to avoid polluting stdout (MCP uses stdout for JSON-RPC)
+import sys
+console = Console(file=sys.stderr)
 
 # Configure transport and statelessness
 trspt: Literal["stdio", "streamable-http"] = "stdio"
@@ -154,9 +157,10 @@ def setup_logging(log_level: LogLevel) -> None:
     Args:
         log_level: Log level to use
     """
+    log_dir = Path(os.getenv("LOG_DIR", "./logs"))
     log_config = LogConfig(
         level=log_level,
-        log_file=Path("server.log") if log_level != LogLevel.DEBUG else None,
+        log_file=log_dir / "server.log" if log_level != LogLevel.DEBUG else None,
         console_output=True,
     )
     configure_logger(log_config)

@@ -44,13 +44,16 @@ def configure_logger(config: LogConfig) -> "Logger":
     Returns:
         Configured logger instance
     """
+    import sys
+
     # Remove default handler
     loguru_logger.remove()
 
     # Add console handler with custom colors
+    # IMPORTANT: Use stderr to avoid polluting stdout (MCP uses stdout for JSON-RPC)
     if config.console_output:
         loguru_logger.add(
-            sink=lambda msg: print(msg, end=""),
+            sink=sys.stderr,
             format=config.format,
             level=config.level.value,
             colorize=True,
@@ -92,8 +95,12 @@ def get_logger(name: str | None = None) -> "Logger":
         return loguru_logger.patch(lambda record: record.update(name=module_name))
 
     # Auto-detect calling module
-    frame = inspect.currentframe().f_back
-    module_name = frame.f_globals.get("__name__", "unknown")
-    # Extract just the last part of the module path
-    simple_module = module_name.split(".")[-1]
-    return loguru_logger.patch(lambda record: record.update(name=simple_module))
+    frame = inspect.currentframe()
+    if frame and frame.f_back:
+        module_name = frame.f_back.f_globals.get("__name__", "unknown")
+        # Extract just the last part of the module path
+        simple_module = module_name.split(".")[-1]
+        return loguru_logger.patch(lambda record: record.update(name=simple_module))
+
+    # Fallback if frame detection fails
+    return loguru_logger.patch(lambda record: record.update(name="unknown"))

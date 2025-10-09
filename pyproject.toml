@@ -1,6 +1,6 @@
 [project]
 name = "cv-writer-mcp"
-version = "0.1.0"
+version = "0.0.1"
 description = "MCP server for converting markdown CV content to LaTeX and compiling to PDF"
 authors = [
     {name = "Francisco Perez-Sorrosal", email = "fperezsorrosal@gmail.com"}
@@ -115,34 +115,27 @@ fix-style = "python -m cv_writer_mcp fix-style -p output/to_improve_schwab.pdf -
 # ============================================================================
 
 # Build Python wheel using uv
-python-bundle = "uv build --wheel"
+python-bundle = "mkdir -p python-dist && uv build --wheel --out-dir python-dist && echo 'Wheel built and ready for MCPB bundle'"
 
 # Export dependencies for bundle using uv
-update-mcpb-deps = "uv pip compile pyproject.toml -o requirements-bundle.txt"
+update-mcpb-deps = "rm -rf uv.lock && uv sync && uv lock && uv export --no-hashes --format requirements-txt > requirements.txt"
 
-# Install dependencies to lib/ directory using uv
+# Install dependencies to lib/ directory using uv~~
 mcp-bundle = """
-rm -rf bundle/lib &&
-mkdir -p bundle/lib &&
-uv pip install --target bundle/lib -r requirements-bundle.txt
+rm -rf lib &&
+mkdir -p lib &&
+uv pip install --target lib -r requirements.txt
 """
 
 # Create .mcpb bundle file
-pack = """
-mkdir -p bundle &&
-cp manifest.json bundle/ &&
-cp -r src/cv_writer_mcp bundle/server &&
-cp -r context bundle/context &&
-cd bundle &&
-zip -r ../cv-writer-mcp.mcpb . &&
-cd .. &&
+pack="""BUNDLE_NAME=$(python3 -c \"import json; print(f\\\"{json.load(open('manifest.json'))['name']}-{json.load(open('manifest.json'))['version']}.mcpb\\\")\") && 
+npx @anthropic-ai/mcpb pack . mcpb-package/$BUNDLE_NAME &&
 echo 'Bundle created: cv-writer-mcp.mcpb'
 """
 
 # Clean bundle artifacts
 clean-bundles = """
-rm -rf bundle/ dist/ build/ *.egg-info &&
-rm -f cv-writer-mcp.mcpb requirements-bundle.txt &&
+rm -rf ilb/ python-dist/ mcpb-package/ &&
 echo 'Bundle artifacts cleaned'
 """
 

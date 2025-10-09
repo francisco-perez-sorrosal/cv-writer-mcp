@@ -1,14 +1,44 @@
 {
+  "manifest_version": "0.2",
   "name": "cv-writer-mcp",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "AI-powered CV generation from markdown with intelligent style optimization",
-  "author": "Francisco Perez-Sorrosal <fperezsorrosal@gmail.com>",
+  "author": {
+    "name": "Francisco Perez-Sorrosal",
+    "email": "fperezsorrosal@gmail.com",
+    "url": "https://github.com/francisco-perez-sorrosal"
+  },
+
   "license": "MIT",
+  "homepage": "https://github.com/francisco-perez-sorrosal/cv-writer-mcp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/francisco-perez-sorrosal/cv-writer-mcp.git"
+  },  
   "server": {
-    "command": "python",
-    "args": ["-m", "cv_writer_mcp", "start-mcps"],
-    "env": {
-      "PYTHONPATH": "lib:${PYTHONPATH}"
+    "type": "python",
+    "entry_point": "src/cv_writer_mcp/main.py",
+    "mcp_config": {
+      "command": "python3",
+      "args": [
+        "-m",
+        "cv_writer_mcp",
+        "start-mcps",
+        "--debug"
+      ],
+      "env": {
+        "PYTHONPATH": "${__dirname}/lib:${__dirname}/src:${__dirname}",
+        "PATH": "/Library/TeX/texbin:/usr/local/texlive/2024/bin/universal-darwin:/usr/local/texlive/2023/bin/universal-darwin:/usr/bin:/bin:/usr/sbin:/sbin",
+        "TRANSPORT": "stdio",
+        "HOST": "0.0.0.0",
+        "PORT": "10000",
+        "OUTPUT_DIR": "/tmp/cv-writer-mcp/output",
+        "TEMP_DIR": "/tmp/cv-writer-mcp/temp",
+        "MAX_FILE_SIZE": "10485760",
+        "LATEX_TIMEOUT": "180",
+        "TEMPLATES_DIR": "${__dirname}/context",
+        "LOG_DIR": "/tmp/cv-writer-mcp/logs"
+      }
     }
   },
   "tools": [
@@ -28,8 +58,5 @@
       "name": "compile_latex_to_pdf",
       "description": "Compile LaTeX to PDF with error fixing (debug/test)"
     }
-  ],
-  "requirements": {
-    "openai_api_key": "Required for AI agents"
-  }
+  ]
 }

@@ -121,7 +121,7 @@ class MD2LaTeXAgent:
             if not output_filename.endswith(".tex"):
                 output_filename += ".tex"
 
-            output_path = Path("./output") / output_filename
+            output_path = Path(os.getenv("OUTPUT_DIR", "./output")) / output_filename
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(latex_output.latex_content, encoding="utf-8")
 

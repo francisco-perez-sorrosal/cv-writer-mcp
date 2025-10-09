@@ -49,18 +49,60 @@ class ServerConfig(BaseModel):
 
     @field_validator("output_dir", "temp_dir", "templates_dir")
     @classmethod
-    def create_directories(cls, v: Path) -> Path:
-        """Ensure directories exist."""
-        v.mkdir(parents=True, exist_ok=True)
+    def validate_directories(cls, v: Path) -> Path:
+        """Validate and convert directory paths to absolute paths.
+
+        Note: Directories are created lazily when first accessed, not during initialization.
+        This prevents failures when running from read-only locations (e.g., MCP bundles).
+        """
+        # Convert to absolute path if relative
+        if not v.is_absolute():
+            v = v.resolve()
         return v
 
+    def ensure_dir(self, dir_path: Path) -> Path:
+        """Ensure a directory exists, creating it if possible.
+
+        Args:
+            dir_path: Path to the directory
+
+        Returns:
+            The directory path
+
+        Raises:
+            OSError: If directory cannot be created
+        """
+        try:
+            dir_path.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            # If we can't create in the intended location, try a temp directory
+            import tempfile
+            import os
+
+            # Create in system temp dir as fallback
+            temp_base = Path(tempfile.gettempdir()) / "cv-writer-mcp"
+            fallback_dir = temp_base / dir_path.name
+            fallback_dir.mkdir(parents=True, exist_ok=True)
+
+            # Log the fallback (using stderr to avoid stdout pollution)
+            import sys
+            print(f"Warning: Could not create {dir_path}: {e}. Using fallback: {fallback_dir}", file=sys.stderr)
+
+            return fallback_dir
+        return dir_path
+
     def model_post_init(self, __context: Any) -> None:
-        """Post-initialization to ensure base_url consistency."""
+        """Post-initialization to ensure base_url consistency and create directories."""
         # If base_url is still the default, update it based on host and port
         if self.base_url == "http://localhost:8000" and (
             self.host != "localhost" or self.port != 8000
         ):
             self.base_url = f"http://{self.host}:{self.port}"
+
+        # Ensure directories exist (with fallback to temp dir if needed)
+        self.output_dir = self.ensure_dir(self.output_dir)
+        self.temp_dir = self.ensure_dir(self.temp_dir)
+        # Note: templates_dir is read-only, so we don't create it
 
     def get_base_url(self) -> str:
         """Get the base URL, ensuring it reflects current host and port."""
