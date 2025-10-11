@@ -12,6 +12,8 @@ from loguru import logger
 
 from ..models import CompletionStatus, ServerConfig, create_agent_from_config
 from ..utils import (
+    PeriodicProgressTicker,
+    ProgressCallback,
     create_versioned_file,
     get_next_version_number,
     load_agent_config,
@@ -262,16 +264,21 @@ class CompilationErrorAgent:
         self,
         tex_file_path: Path,
         compilation_result: "OrchestrationResult",
+        progress_callback: ProgressCallback = None,
     ) -> tuple[CompilationErrorOutput, Path | None]:
         """Fix LaTeX errors using the error fixing agent.
 
         Args:
             tex_file_path: Path to the .tex file to fix
             compilation_result: Compilation result containing errors and exit code
+            progress_callback: Optional callback for progress reporting (0-100)
 
         Returns:
             Tuple of (fixing result, path to corrected file if successful)
         """
+        if progress_callback:
+            await progress_callback(0)
+            
         logger.info("Starting LaTeX error fixing with compilation error agent")
 
         # Validate we have errors to fix
@@ -316,9 +323,25 @@ class CompilationErrorAgent:
             exit_code=compilation_result.exit_code,
         )
 
+        if progress_callback:
+            await progress_callback(10)
+
         try:
             logger.info("Calling compilation error agent...")
-            error_fixing_result = await Runner.run(error_agent, error_fixing_prompt)
+            logger.info("🔄 Progress reporting enabled - updates every 10 seconds during error fixing")
+            
+            # Use periodic ticker to prevent MCP timeout during long OpenAI SDK call
+            async with PeriodicProgressTicker(
+                progress_callback,
+                start_percent=10,
+                end_percent=90,
+                interval_seconds=10.0,
+                step_size=5,
+            ):
+                error_fixing_result = await Runner.run(error_agent, error_fixing_prompt)
+
+            if progress_callback:
+                await progress_callback(90)
 
             # Parse the agent output
             fixing_output = self.parse_error_agent_output(error_fixing_result)
@@ -331,6 +354,9 @@ class CompilationErrorAgent:
                     f"Error fixing completed: {fixing_output.total_fixes} fixes applied"
                 )
 
+                if progress_callback:
+                    await progress_callback(95)
+
                 # Create versioned file with the corrected content
                 next_version = get_next_version_number(tex_file_path)
                 versioned_file = create_versioned_file(tex_file_path, next_version)
@@ -341,9 +367,15 @@ class CompilationErrorAgent:
                 logger.info(
                     f"Successfully saved corrected content to: {versioned_file.name} (v{next_version})"
                 )
+                
+                if progress_callback:
+                    await progress_callback(100)
+                    
                 return fixing_output, versioned_file
             else:
                 logger.warning("Error fixing did not modify the file or failed")
+                if progress_callback:
+                    await progress_callback(100)
                 return fixing_output, None
 
         except Exception as e:

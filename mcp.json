@@ -1,0 +1,13 @@
+{
+    "mcpServers": {
+        "default-server": {
+            "command": "pixi",
+            "args": ["run", "serve"],
+            "env": {
+                "MCP_SERVER_REQUEST_TIMEOUT": "1500000",
+                "MCP_REQUEST_TIMEOUT_RESET_ON_PROGRESS": "true",
+                "MCP_REQUEST_MAX_TOTAL_TIMEOUT": "1500000"
+            }
+        }
+    }
+}

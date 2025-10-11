@@ -9,7 +9,7 @@ from typing import Literal
 import typer
 from dotenv import load_dotenv
 from loguru import logger
-from mcp.server.fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from pydantic import Field
 from rich.console import Console
 from rich.panel import Panel
@@ -145,7 +145,7 @@ def create_config(debug: bool = False) -> ServerConfig:
         output_dir=Path(os.getenv("OUTPUT_DIR", "./output")),
         temp_dir=Path(os.getenv("TEMP_DIR", "./temp")),
         max_file_size=int(os.getenv("MAX_FILE_SIZE", "10485760")),
-        latex_timeout=int(os.getenv("LATEX_TIMEOUT", "180")),
+        latex_timeout_seconds=int(os.getenv("LATEX_TIMEOUT_SECONDS", "900")),
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         templates_dir=Path(os.getenv("TEMPLATES_DIR", "./context")),
     )
@@ -188,8 +188,9 @@ def setup_mcp_server(
     # PRIMARY END-TO-END MCP TOOLS
     # ========================================================================
 
-    @mcp.tool(structured_output=True)
+    @mcp.tool()
     async def md_to_latex(
+        ctx: Context,
         markdown_content: str = Field(..., description="Markdown CV content"),
         output_filename: str | None = Field(None, description="Custom output filename"),
         enable_style_improvement: bool = Field(
@@ -246,6 +247,9 @@ def setup_mcp_server(
             )
 
         try:
+            # Report initial progress
+            await ctx.report_progress(progress=0, total=100)
+
             result = await orchestrator.generate_cv_from_markdown(
                 markdown_content=markdown_content,
                 output_filename=output_filename,
@@ -254,8 +258,11 @@ def setup_mcp_server(
                 max_style_iterations=max_style_iterations,
                 num_style_variants=num_style_variants,
                 enable_quality_validation=enable_quality_validation,
+                progress_callback=lambda p: ctx.report_progress(progress=p, total=100),
             )
 
+            # Report completion
+            await ctx.report_progress(progress=100, total=100)
             return orchestrator.to_response(result)
 
         except Exception as e:
@@ -268,8 +275,9 @@ def setup_mcp_server(
                 diagnostics_summary=None,
             )
 
-    @mcp.tool(structured_output=True)
+    @mcp.tool()
     async def compile_and_improve_style(
+        ctx: Context,
         tex_filename: str = Field(
             ..., description="LaTeX filename to compile and improve"
         ),
@@ -307,6 +315,9 @@ def setup_mcp_server(
             )
 
         try:
+            # Report initial progress
+            await ctx.report_progress(progress=0, total=100)
+
             result = await orchestrator.compile_and_improve_style(
                 tex_filename=tex_filename,
                 output_filename=output_filename,
@@ -314,8 +325,11 @@ def setup_mcp_server(
                 max_style_iterations=max_style_iterations,
                 num_style_variants=num_style_variants,
                 enable_quality_validation=enable_quality_validation,
+                progress_callback=lambda p: ctx.report_progress(progress=p, total=100),
             )
 
+            # Report completion
+            await ctx.report_progress(progress=100, total=100)
             return orchestrator.to_response(result)
 
         except Exception as e:
@@ -333,7 +347,7 @@ def setup_mcp_server(
     # ========================================================================
 
     # Phase 1: Markdown → LaTeX
-    @mcp.tool(structured_output=True)
+    @mcp.tool()
     async def p1_markdown_to_latex(
         markdown_content: str, output_filename: str | None = None
     ) -> MarkdownToLaTeXResponse:
@@ -372,7 +386,7 @@ def setup_mcp_server(
             )
 
     # Phase 2: LaTeX → PDF
-    @mcp.tool(structured_output=True)
+    @mcp.tool()
     async def p2_compile_latex_to_pdf(
         tex_filename: str = Field(..., description="Name of the .tex file to compile"),
         output_filename: str = Field(
@@ -458,11 +472,12 @@ def setup_mcp_server(
         return health_response.model_dump_json(indent=2)
 
     @mcp.resource("cv-writer://pdf/{filename}", mime_type="application/pdf")
-    async def serve_pdf(filename: str) -> bytes:
+    async def serve_pdf(filename: str, ctx: Context) -> bytes:
         """Serve generated PDF files as MCP resource."""
         if not config:
             raise RuntimeError("Server not initialized")
 
+        await ctx.log(f"Serving PDF file: {filename}")
         pdf_path = config.output_dir / filename
 
         if not pdf_path.exists() or pdf_path.suffix.lower() != ".pdf":

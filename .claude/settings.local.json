@@ -17,7 +17,9 @@
       "mcp__serena__replace_symbol_body",
       "mcp__serena__get_symbols_overview",
       "mcp__serena__find_file",
-      "WebFetch(domain:gofastmcp.com)"
+      "WebFetch(domain:gofastmcp.com)",
+      "mcp__ide__getDiagnostics",
+      "WebFetch(domain:spec.modelcontextprotocol.io)"
     ],
     "deny": [],
     "ask": []

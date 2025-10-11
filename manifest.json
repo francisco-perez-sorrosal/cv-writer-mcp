@@ -35,9 +35,13 @@
         "OUTPUT_DIR": "/tmp/cv-writer-mcp/output",
         "TEMP_DIR": "/tmp/cv-writer-mcp/temp",
         "MAX_FILE_SIZE": "10485760",
-        "LATEX_TIMEOUT": "180",
+        "LATEX_TIMEOUT_SECONDS": "900",
         "TEMPLATES_DIR": "${__dirname}/context",
-        "LOG_DIR": "/tmp/cv-writer-mcp/logs"
+        "LOG_DIR": "/tmp/cv-writer-mcp/logs",
+        "MCP_SERVER_REQUEST_TIMEOUT": "1500000",
+        "MCP_REQUEST_MAX_TOTAL_TIMEOUT": "1500000",
+        "MCP_REQUEST_TIMEOUT_RESET_ON_PROGRESS": "true"
+
       }
     }
   },

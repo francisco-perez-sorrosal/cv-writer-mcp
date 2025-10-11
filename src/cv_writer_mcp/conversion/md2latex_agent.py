@@ -1,5 +1,6 @@
 """Markdown to LaTeX conversion agent using OpenAI Agents SDK."""
 
+import asyncio
 import os
 from pathlib import Path
 
@@ -7,7 +8,12 @@ from agents import Runner
 from loguru import logger
 
 from ..models import CompletionStatus, create_agent_from_config
-from ..utils import load_agent_config, read_text_file
+from ..utils import (
+    PeriodicProgressTicker,
+    ProgressCallback,
+    load_agent_config,
+    read_text_file,
+)
 from .models import LaTeXOutput, MarkdownToLaTeXRequest, MarkdownToLaTeXResponse
 
 
@@ -85,16 +91,25 @@ class MD2LaTeXAgent:
         )
         logger.info("Created OpenAI agent with structured output")
 
-    async def convert(self, request: MarkdownToLaTeXRequest) -> MarkdownToLaTeXResponse:
+    async def convert(
+        self,
+        request: MarkdownToLaTeXRequest,
+        progress_callback: ProgressCallback = None,
+    ) -> MarkdownToLaTeXResponse:
         """Convert markdown CV content to LaTeX using OpenAI Agents SDK.
 
         Args:
             request: Markdown to LaTeX conversion request
+            progress_callback: Optional callback for progress reporting (0-100)
 
         Returns:
             Conversion response with LaTeX file URL or error message
         """
         try:
+            # Report start
+            if progress_callback:
+                await progress_callback(0)
+
             logger.info("Starting markdown to LaTeX conversion using OpenAI Agents SDK")
 
             # Create the user prompt using YAML template
@@ -102,8 +117,25 @@ class MD2LaTeXAgent:
                 markdown_content=request.markdown_content
             )
 
+            if progress_callback:
+                await progress_callback(10)
+
             # Run the agent with structured output
-            result = await Runner.run(self.agent, user_prompt)
+            # Use periodic ticker to prevent MCP timeout during long operation
+            logger.debug("Running OpenAI agent (this may take 10-30 seconds)...")
+            logger.info("🔄 Progress reporting enabled - updates every 10 seconds")
+            
+            async with PeriodicProgressTicker(
+                progress_callback,
+                start_percent=10,
+                end_percent=85,
+                interval_seconds=10.0,
+                step_size=5,
+            ):
+                result = await Runner.run(self.agent, user_prompt)
+
+            if progress_callback:
+                await progress_callback(85)
 
             # Extract structured output
             latex_output: LaTeXOutput = result.final_output
@@ -115,6 +147,9 @@ class MD2LaTeXAgent:
                     tex_url=None,
                     message=f"Agent response does not contain valid LaTeX content. Conversion notes: {latex_output.conversion_notes}",
                 )
+
+            if progress_callback:
+                await progress_callback(90)
 
             # Save the LaTeX file
             output_filename = request.output_filename or "cv_converted.tex"
@@ -129,6 +164,9 @@ class MD2LaTeXAgent:
             tex_url = f"cv-writer://tex/{output_filename}"
 
             logger.info(f"Successfully converted markdown to LaTeX: {output_filename}")
+
+            if progress_callback:
+                await progress_callback(100)
 
             return MarkdownToLaTeXResponse(
                 status=CompletionStatus.SUCCESS,

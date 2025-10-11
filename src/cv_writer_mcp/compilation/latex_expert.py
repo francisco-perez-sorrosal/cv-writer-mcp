@@ -8,7 +8,12 @@ from typing import Any
 from loguru import logger
 
 from ..models import CompletionStatus, ServerConfig
-from ..utils import create_error_version
+from ..utils import (
+    PeriodicProgressTicker,
+    ProgressCallback,
+    ProgressMapper,
+    create_error_version,
+)
 from .compiler_agent import CompilationAgent
 from .error_agent import CompilationErrorAgent
 from .models import (
@@ -31,7 +36,7 @@ class LaTeXExpert:
             timeout: Compilation timeout in seconds
             config: Server configuration (optional, for high-level compilation)
         """
-        self.timeout = config.latex_timeout
+        self.timeout = config.latex_timeout_seconds
         self.config = config
 
         # Enhanced diagnostics tracking using Pydantic model
@@ -170,6 +175,7 @@ class LaTeXExpert:
         attempt: int,
         max_attempts: int,
         user_instructions: str | None = None,
+        progress_callback: ProgressCallback = None,
     ) -> OrchestrationResult:
         """Execute a single compilation step.
 
@@ -180,6 +186,7 @@ class LaTeXExpert:
             attempt: Current attempt number (1-indexed)
             max_attempts: Maximum number of attempts
             user_instructions: Optional user instructions
+            progress_callback: Optional callback for progress reporting (0-100)
 
         Returns:
             OrchestrationResult with compilation outcome
@@ -193,7 +200,7 @@ class LaTeXExpert:
 
         try:
             compilation_result = await self._compilation_agent.compile_latex(
-                tex_file_path, output_path, engine, user_instructions
+                tex_file_path, output_path, engine, user_instructions, progress_callback=progress_callback
             )
 
             if compilation_result.status == CompletionStatus.SUCCESS:
@@ -228,7 +235,11 @@ class LaTeXExpert:
             )
 
     async def _fix_step(
-        self, tex_file_path: Path, compilation_result: OrchestrationResult, attempt: int
+        self,
+        tex_file_path: Path,
+        compilation_result: OrchestrationResult,
+        attempt: int,
+        progress_callback: ProgressCallback = None,
     ) -> tuple[CompilationErrorOutput, Path | None]:
         """Execute a single error fixing step.
 
@@ -236,6 +247,7 @@ class LaTeXExpert:
             tex_file_path: Path to .tex file to fix
             compilation_result: Failed compilation result with errors
             attempt: Current attempt number (1-indexed)
+            progress_callback: Optional callback for progress reporting (0-100)
 
         Returns:
             Tuple of (fixing output, corrected file path or None)
@@ -246,7 +258,7 @@ class LaTeXExpert:
 
         try:
             fixing_output, corrected_file_path = await self._fixing_agent.fix_errors(
-                tex_file_path, compilation_result
+                tex_file_path, compilation_result, progress_callback=progress_callback
             )
 
             if fixing_output.status == CompletionStatus.SUCCESS and corrected_file_path:
@@ -302,6 +314,7 @@ class LaTeXExpert:
         engine: LaTeXEngine,
         max_attempts: int = 3,
         user_instructions: str | None = None,
+        progress_callback: ProgressCallback = None,
     ) -> OrchestrationResult:
         """Compile LaTeX using intelligent agent orchestration with error fixing.
 
@@ -318,10 +331,15 @@ class LaTeXExpert:
             engine: LaTeX engine to use
             max_attempts: Maximum number of compilation attempts
             user_instructions: Optional additional instructions for the agents
+            progress_callback: Optional callback for progress reporting (0-100)
 
         Returns:
             Final compilation result
         """
+        # Report start
+        if progress_callback:
+            await progress_callback(0)
+
         logger.info("=" * 70)
         logger.info("🚀 STARTING LATEX COMPILATION ORCHESTRATION")
         logger.info(f"   Max attempts: {max_attempts}")
@@ -331,7 +349,19 @@ class LaTeXExpert:
         current_file = tex_file_path
 
         for attempt in range(1, max_attempts + 1):
-            # Step 1: Attempt compilation
+            # Create progress mapper for this attempt
+            # Each attempt gets an equal portion of 0-100% range
+            attempt_start = ((attempt - 1) * 100) // max_attempts
+            attempt_end = (attempt * 100) // max_attempts
+            attempt_progress = ProgressMapper(progress_callback, attempt_start, attempt_end)
+            
+            # Report start of attempt
+            await attempt_progress.report(0)
+            
+            # Step 1: Attempt compilation (0-60% of attempt range)
+            # Create progress mapper for compilation (10-60% of attempt)
+            compile_progress = attempt_progress.create_sub_mapper(10, 60)
+            
             compile_result = await self._compile_step(
                 current_file,
                 output_path,
@@ -339,10 +369,14 @@ class LaTeXExpert:
                 attempt,
                 max_attempts,
                 user_instructions,
+                progress_callback=compile_progress.report,
             )
+            
+            await attempt_progress.report(60)
 
             # Gate: Success? Done.
             if compile_result.status == CompletionStatus.SUCCESS:
+                await attempt_progress.report(100)
                 # Set final file paths (may be timestamped versions from error fixing)
                 compile_result.final_tex_path = current_file
                 # Derive PDF path from the final TEX file
@@ -362,14 +396,18 @@ class LaTeXExpert:
                 logger.info("=" * 70)
                 return compile_result
 
-            # Step 2: Try to fix errors (if retries remain)
+            # Step 2: Try to fix errors (if retries remain) (60-95% of attempt range)
             if attempt < max_attempts:
+                # Create progress mapper for error fixing (65-95% of attempt)
+                fixing_progress = attempt_progress.create_sub_mapper(65, 95)
+                
                 _, corrected_file = await self._fix_step(
-                    current_file, compile_result, attempt
+                    current_file, compile_result, attempt, progress_callback=fixing_progress.report
                 )
 
                 # Gate: Fixed? Use corrected file for next compile
                 if corrected_file:
+                    await attempt_progress.report(100)
                     current_file = corrected_file
                     logger.info(f"🔄 Retrying with fixed file: {current_file}")
                     continue

@@ -12,7 +12,7 @@ from agents import Agent, Runner
 from loguru import logger
 
 from ..models import CompletionStatus, create_agent_from_config
-from ..utils import load_agent_config
+from ..utils import PeriodicProgressTicker, ProgressCallback, load_agent_config
 from .models import (
     CompilationDiagnostics,
     CompilerAgentOutput,
@@ -238,6 +238,7 @@ class CompilationAgent:
         output_path: Path,
         engine: LaTeXEngine = LaTeXEngine.PDFLATEX,
         user_instructions: str | None = None,
+        progress_callback: ProgressCallback = None,
     ) -> OrchestrationResult:
         """Compile LaTeX using the compilation agent.
 
@@ -246,10 +247,14 @@ class CompilationAgent:
             output_path: Path where the PDF should be saved
             engine: LaTeX engine to use
             user_instructions: Optional additional instructions for the agent
+            progress_callback: Optional callback for progress reporting (0-100)
 
         Returns:
             Compilation result
         """
+        if progress_callback:
+            await progress_callback(0)
+            
         logger.info("Starting LaTeX compilation with compilation agent")
 
         compilation_agent = self.create_compiler_agent()
@@ -271,8 +276,24 @@ class CompilationAgent:
             additional_instructions=additional_instructions,
         )
 
+        if progress_callback:
+            await progress_callback(10)
+
         try:
-            compilation_result = await Runner.run(compilation_agent, compilation_prompt)
+            logger.info("🔄 Progress reporting enabled - updates every 10 seconds during compilation")
+            
+            # Use periodic ticker to prevent MCP timeout during long OpenAI SDK call
+            async with PeriodicProgressTicker(
+                progress_callback,
+                start_percent=10,
+                end_percent=90,
+                interval_seconds=10.0,
+                step_size=5,
+            ):
+                compilation_result = await Runner.run(compilation_agent, compilation_prompt)
+
+            if progress_callback:
+                await progress_callback(90)
 
             # Parse the agent output
             agent_output = self.parse_compiler_agent_output(compilation_result, engine)
@@ -284,6 +305,9 @@ class CompilationAgent:
                 actual_output_path = output_path
                 if agent_output.output_path:
                     actual_output_path = Path(agent_output.output_path)
+
+                if progress_callback:
+                    await progress_callback(100)
 
                 return OrchestrationResult(
                     status=CompletionStatus.SUCCESS,
@@ -297,6 +321,9 @@ class CompilationAgent:
             else:
                 # Track failed compilation
                 self.diagnostics.increment("failed_compilations")
+
+                if progress_callback:
+                    await progress_callback(100)
 
                 return OrchestrationResult(
                     status=CompletionStatus.FAILED,

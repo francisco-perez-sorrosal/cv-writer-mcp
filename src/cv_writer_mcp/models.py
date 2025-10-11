@@ -8,6 +8,7 @@ Package-specific models are in their respective packages:
 """
 
 from enum import Enum
+import os
 from pathlib import Path
 from typing import Any
 
@@ -40,10 +41,10 @@ class ServerConfig(BaseModel):
     base_url: str = "http://localhost:8000"
     debug: bool = False
     log_level: LogLevel = LogLevel.INFO
-    output_dir: Path = Path("./output")
+    output_dir: Path = Path(os.getenv("OUTPUT_DIR", "./output"))
     temp_dir: Path = Path("./temp")
     max_file_size: int = 10 * 1024 * 1024  # 10MB
-    latex_timeout: int = 30
+    latex_timeout_seconds: int = 900  # 15 minutes for complex compilations
     openai_api_key: str | None = None
     templates_dir: Path = Path("./context")
 

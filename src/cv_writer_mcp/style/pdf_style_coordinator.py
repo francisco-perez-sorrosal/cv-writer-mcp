@@ -13,6 +13,9 @@ if TYPE_CHECKING:
 
 from ..models import CompletionStatus
 from ..utils import (
+    PeriodicProgressTicker,
+    ProgressCallback,
+    ProgressMapper,
     create_versioned_file,
     get_next_version_number,
     is_error_version,
@@ -62,6 +65,7 @@ class PDFStyleCoordinator:
         enable_variant_validation: bool = True,
         enable_variant_refinement: bool = True,
         output_dir: Path | None = None,
+        progress_callback: ProgressCallback = None,
     ) -> StyleIterationResult:
         """Multi-iteration style improvement with N-variant strategy and quality judge.
 
@@ -80,10 +84,14 @@ class PDFStyleCoordinator:
             enable_variant_validation: Enable visual validation gate for variants (default: True)
             enable_variant_refinement: Enable refinement of variants with critical issues (default: True)
             output_dir: Directory for variant outputs (default: ./output/style_variants)
+            progress_callback: Optional callback for progress reporting (0-100)
 
         Returns:
             StyleIterationResult with best variant and diagnostics
         """
+        # Report start
+        if progress_callback:
+            await progress_callback(0)
         # Smart default: enable judge if num_variants >= 2
         if enable_quality_validation is None:
             enable_quality_validation = num_variants >= 2
@@ -103,6 +111,9 @@ class PDFStyleCoordinator:
         # Setup output directory
         output_dir = output_dir or Path("./output/style_variants")
         output_dir.mkdir(parents=True, exist_ok=True)
+
+        if progress_callback:
+            await progress_callback(5)
 
         # Initialize diagnostics
         diagnostics = StyleDiagnostics(
@@ -134,20 +145,30 @@ class PDFStyleCoordinator:
         )
         logger.info("=" * 80)
 
-        # OUTER LOOP: Style iterations
+        # OUTER LOOP: Style iterations (5-90% of total progress)
         for iteration in range(1, max_iterations + 1):
+            # Create progress mapper for this iteration
+            # Each iteration gets equal portion of 5-90% range
+            iteration_start = 5 + (((iteration - 1) * 85) // max_iterations)
+            iteration_end = 5 + ((iteration * 85) // max_iterations)
+            iteration_progress = ProgressMapper(progress_callback, iteration_start, iteration_end)
+            
+            await iteration_progress.report(0)
+            
             logger.info("")
             logger.info("─" * 80)
             logger.info(f"🎨 STYLE ITERATION {iteration}/{max_iterations}")
             logger.info("─" * 80)
 
-            # Step 1: Capture & Analyze current PDF
+            # Step 1: Capture & Analyze current PDF (0-10% of iteration)
             if current_pdf is None:
                 raise ValueError(
                     "Current PDF path is None - cannot proceed with style improvement"
                 )
 
+            await iteration_progress.report(5)
             capture_result = await self._capture_and_analyze_pdf(current_pdf)
+            await iteration_progress.report(10)
             if capture_result.status != CompletionStatus.SUCCESS:
                 logger.error(f"Page capture failed: {capture_result.message}")
                 break
@@ -159,11 +180,15 @@ class PDFStyleCoordinator:
             )
             logger.info("└" + "─" * 78 + "┘")
 
-            # Step 2: Generate N variants in parallel
+            # Step 2: Generate N variants in parallel (10-80% of iteration)
             logger.info("")
             logger.info("┌" + "─" * 78 + "┐")
             logger.info(f"│ 🔧 GENERATING {num_variants} VARIANT(S) IN PARALLEL")
             logger.info("└" + "─" * 78 + "┘")
+            
+            # Create progress mapper for variant generation (10-80%)
+            variants_progress = iteration_progress.create_sub_mapper(10, 80)
+            
             variants = await self._generate_variants_parallel(
                 num_variants=num_variants,
                 current_tex_content=current_tex_content,
@@ -177,6 +202,7 @@ class PDFStyleCoordinator:
                 original_issues=capture_result.visual_issues,
                 enable_variant_validation=enable_variant_validation,
                 enable_variant_refinement=enable_variant_refinement,
+                progress_callback=variants_progress.report,
             )
 
             # Step 3: Filter successful variants
@@ -205,10 +231,15 @@ class PDFStyleCoordinator:
                         iteration,
                     )
 
-            # Step 4: Quality Evaluation (variants already include validation/refinement)
+            # Step 4: Quality Evaluation (variants already include validation/refinement) (80-95% of iteration)
+            await iteration_progress.report(80)
+            
             if current_pdf is None:
                 raise ValueError("Current PDF path is None - cannot evaluate quality")
 
+            # Create progress mapper for quality evaluation (80-95%)
+            quality_progress = iteration_progress.create_sub_mapper(80, 95)
+            
             eval_result = await self._evaluate_quality(
                 enable_quality_validation=enable_quality_validation,
                 num_variants=num_variants,
@@ -216,6 +247,7 @@ class PDFStyleCoordinator:
                 successful_variants=successful_variants,  # Variants already include validation/refinement
                 improvement_goals=capture_result.visual_issues,
                 iteration=iteration,
+                progress_callback=quality_progress.report,
             )
 
             # Track diagnostics from variants (already computed during parallel processing)
@@ -289,9 +321,12 @@ class PDFStyleCoordinator:
                 logger.info("")
 
             # Step 5: Decision
+            await iteration_progress.report(95)
+            
             if eval_result.score == "pass":
                 logger.info("✅ Quality criteria met! Stopping iterations.")
                 diagnostics.iterations_completed = iteration
+                await iteration_progress.report(100)
                 break
             elif eval_result.score == "needs_improvement":
                 if iteration < max_iterations:
@@ -303,15 +338,22 @@ class PDFStyleCoordinator:
                         encoding="utf-8"
                     )
                     diagnostics.iterations_completed = iteration
+                    await iteration_progress.report(100)
                 else:
                     logger.info("Max iterations reached")
                     diagnostics.iterations_completed = iteration
+                    await iteration_progress.report(100)
                     break
             else:  # "fail" or "unknown"
                 logger.warning("❌ Quality criteria not met. Using best available.")
                 diagnostics.iterations_completed = iteration
+                await iteration_progress.report(100)
                 break
 
+        # Finalization (90-100% of total progress)
+        if progress_callback:
+            await progress_callback(95)
+        
         # Return final result
         if best_result:
             logger.info("")
@@ -328,6 +370,9 @@ class PDFStyleCoordinator:
                 logger.info("   Final PDF: No PDF available")
             logger.info(f"   Final TEX: {best_result.tex_path.name}")
             logger.info("█" * 80)
+
+            if progress_callback:
+                await progress_callback(100)
 
             return StyleIterationResult(
                 status=CompletionStatus.SUCCESS,
@@ -389,6 +434,7 @@ class PDFStyleCoordinator:
         original_issues: list[str] | None = None,
         enable_variant_validation: bool = True,
         enable_variant_refinement: bool = True,
+        progress_callback: ProgressCallback = None,
     ) -> list[VariantResult | None]:
         """Generate N variants in parallel using asyncio.gather.
 
@@ -398,6 +444,9 @@ class PDFStyleCoordinator:
         import time
 
         start_time = time.time()
+
+        if progress_callback:
+            await progress_callback(0)
 
         logger.info(f"🚀 Starting {num_variants} variants in PARALLEL...")
 
@@ -420,8 +469,19 @@ class PDFStyleCoordinator:
             for vid in range(1, num_variants + 1)
         ]
 
-        # Execute all variants in parallel
-        results = await asyncio.gather(*tasks, return_exceptions=False)
+        # Execute all variants in parallel with progress ticker
+        # Use ticker to report progress during long-running parallel operations
+        async with PeriodicProgressTicker(
+            progress_callback,
+            start_percent=5,
+            end_percent=95,
+            interval_seconds=10.0,
+            step_size=10,
+        ):
+            results = await asyncio.gather(*tasks, return_exceptions=False)
+
+        if progress_callback:
+            await progress_callback(100)
 
         end_time = time.time()
         duration = end_time - start_time
@@ -606,12 +666,18 @@ class PDFStyleCoordinator:
         successful_variants: list[VariantResult],
         improvement_goals: list[str],
         iteration: int,
+        progress_callback: ProgressCallback = None,
     ) -> EvaluationResult:
         """Evaluate variant quality and select best."""
+        if progress_callback:
+            await progress_callback(0)
+            
         if not enable_quality_validation:
             # No judge: pick first successful variant
             logger.info("  📋 No judge: using first successful variant")
             best = successful_variants[0]
+            if progress_callback:
+                await progress_callback(100)
             return EvaluationResult(
                 best_variant_id=best.variant_id,
                 best_variant=best,
@@ -661,7 +727,8 @@ class PDFStyleCoordinator:
                 logger.info("│")
                 logger.info("│ ⚠️  Error versions filtered out:")
                 for v in error_variants:
-                    logger.info(f"│   ❌ Variant {v.variant_id}: {v.pdf_path.name}")
+                    pdf_name = v.pdf_path.name if v.pdf_path else "None"
+                    logger.info(f"│   ❌ Variant {v.variant_id}: {pdf_name}")
             logger.info("└" + "─" * 78 + "┘")
 
             # Prepare variant PDFs for comparison: (id, path) tuples
@@ -672,18 +739,35 @@ class PDFStyleCoordinator:
                 if v.pdf_path is not None
             ]
 
-            judge_output = await self.quality_agent.evaluate_variants(
-                original_pdf_path=original_pdf,
-                variant_pdfs=variant_pdfs,
-                improvement_goals=improvement_goals,
-                iteration_number=iteration,
-            )
+            if progress_callback:
+                await progress_callback(25)
+
+            # Use periodic ticker for quality evaluation (OpenAI call)
+            async with PeriodicProgressTicker(
+                progress_callback,
+                start_percent=25,
+                end_percent=90,
+                interval_seconds=10.0,
+                step_size=10,
+            ):
+                judge_output = await self.quality_agent.evaluate_variants(
+                    original_pdf_path=original_pdf,
+                    variant_pdfs=variant_pdfs,
+                    improvement_goals=improvement_goals,
+                    iteration_number=iteration,
+                )
+
+            if progress_callback:
+                await progress_callback(95)
 
             best = next(
                 v
                 for v in successful_variants
                 if v.variant_id == judge_output.best_variant_id
             )
+
+            if progress_callback:
+                await progress_callback(100)
 
             logger.info("")
             logger.info("┌" + "─" * 78 + "┐")
