@@ -556,7 +556,7 @@ class PeriodicProgressTicker:
         return False  # Don't suppress exceptions
 
 
-async def report_progress_with_stage(
+async def report_progress(
     progress: int,
     progress_callback: ProgressCallback,
     stage: str = "",

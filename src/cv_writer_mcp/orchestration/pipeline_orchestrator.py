@@ -12,7 +12,7 @@ from ..conversion.md2latex_agent import MD2LaTeXAgent
 from ..conversion.models import MarkdownToLaTeXRequest
 from ..models import CompletionStatus, ServerConfig
 from ..style.pdf_style_coordinator import PDFStyleCoordinator
-from ..utils import ProgressMapper
+from ..utils import ProgressMapper, report_progress
 from .models import CVGenerationResponse, CVGenerationResult
 
 
@@ -44,26 +44,6 @@ class CVPipelineOrchestrator:
         self.latex_expert = latex_expert
         self.style_coordinator = style_coordinator
         self.config = config
-
-    async def _report_progress(
-        self,
-        progress: int,
-        progress_callback: Callable | None,
-        stage: str = "",
-    ) -> None:
-        """Report progress with logging.
-
-        Args:
-            progress: Progress value (0-100)
-            progress_callback: Optional callback to report progress
-            stage: Optional stage description for logging
-        """
-        if progress_callback:
-            await progress_callback(progress)
-            if stage:
-                logger.info(f"📊 Progress: {progress}% - {stage}")
-            else:
-                logger.info(f"📊 Progress: {progress}%")
 
     async def generate_cv_from_markdown(
         self,
@@ -107,7 +87,7 @@ class CVPipelineOrchestrator:
             logger.info("█" * 80)
             conversion_start = time.time()
 
-            await self._report_progress(5, progress_callback, "Starting conversion")
+            await report_progress(5, progress_callback, "Starting conversion")
 
             md_request = MarkdownToLaTeXRequest(
                 markdown_content=markdown_content,
@@ -133,7 +113,7 @@ class CVPipelineOrchestrator:
             conversion_time = time.time() - conversion_start
             logger.info(f"✅ Conversion completed in {conversion_time:.2f}s")
 
-            await self._report_progress(30, progress_callback, "Conversion complete")
+            await report_progress(30, progress_callback, "Conversion complete")
 
             # Extract file paths
             if not conversion_result.tex_url:
@@ -157,7 +137,7 @@ class CVPipelineOrchestrator:
             )
             logger.info("█" * 80)
 
-            await self._report_progress(35, progress_callback, "Preparing compilation")
+            await report_progress(35, progress_callback, "Preparing compilation")
 
             initial_pdf_filename = tex_filename.stem + ".pdf"
             initial_pdf_path = self.config.output_dir / initial_pdf_filename
@@ -195,7 +175,7 @@ class CVPipelineOrchestrator:
             logger.info(f"   📄 PDF: {actual_compiled_pdf.name}")
             logger.info(f"   📝 TEX: {actual_compiled_tex.name}")
 
-            await self._report_progress(60, progress_callback, "Compilation successful")
+            await report_progress(60, progress_callback, "Compilation successful")
 
             # ================================================================
             # PHASE 3: Style Improvement (optional, with N variants)
@@ -212,7 +192,7 @@ class CVPipelineOrchestrator:
                 )
                 logger.info("█" * 80)
 
-                await self._report_progress(65, progress_callback, "Starting style improvement")
+                await report_progress(65, progress_callback, "Starting style improvement")
 
                 # PHASE 3: Style Improvement (65-95% of total progress)
                 # Create progress mapper for style coordinator
@@ -250,7 +230,7 @@ class CVPipelineOrchestrator:
             else:
                 logger.info("⏭️  PHASE 3: Style improvement skipped (disabled)")
 
-            await self._report_progress(95, progress_callback, "Finalizing")
+            await report_progress(95, progress_callback, "Finalizing")
 
             # ================================================================
             # PIPELINE COMPLETE
@@ -316,12 +296,12 @@ class CVPipelineOrchestrator:
             logger.info("🚀 STARTING COMPILE & IMPROVE PIPELINE")
             logger.info("=" * 80)
 
-            await self._report_progress(5, progress_callback, "Starting pipeline")
+            await report_progress(5, progress_callback, "Starting pipeline")
 
             # Locate tex file
             tex_path = self.config.output_dir / tex_filename
 
-            await self._report_progress(10, progress_callback, "Locating LaTeX file")
+            await report_progress(10, progress_callback, "Locating LaTeX file")
             if not tex_path.exists():
                 return self._create_failure_result(
                     "LaTeX file not found",
@@ -337,7 +317,7 @@ class CVPipelineOrchestrator:
             logger.info("🔨 PHASE 1: Initial compilation")
             logger.info("█" * 80)
 
-            await self._report_progress(15, progress_callback, "Preparing compilation")
+            await report_progress(15, progress_callback, "Preparing compilation")
 
             output_name = output_filename or (tex_path.stem + ".pdf")
             if not output_name.endswith(".pdf"):
@@ -375,7 +355,7 @@ class CVPipelineOrchestrator:
             logger.info(f"   📄 PDF: {actual_compiled_pdf.name}")
             logger.info(f"   📝 TEX: {actual_compiled_tex.name}")
 
-            await self._report_progress(50, progress_callback, "Compilation successful")
+            await report_progress(50, progress_callback, "Compilation successful")
 
             # ================================================================
             # PHASE 2: Style Improvement
@@ -385,7 +365,7 @@ class CVPipelineOrchestrator:
             logger.info("🎨 PHASE 2: Style improvement")
             logger.info("█" * 80)
 
-            await self._report_progress(55, progress_callback, "Starting style improvement")
+            await report_progress(55, progress_callback, "Starting style improvement")
 
             # PHASE 2: Style Improvement (55-95% of total progress)
             # Create progress mapper for style coordinator
@@ -426,7 +406,7 @@ class CVPipelineOrchestrator:
                     final_tex_path = actual_compiled_tex
                     style_diagnostics = style_result.diagnostics
 
-            await self._report_progress(95, progress_callback, "Finalizing")
+            await report_progress(95, progress_callback, "Finalizing")
 
             # ================================================================
             # PIPELINE COMPLETE
